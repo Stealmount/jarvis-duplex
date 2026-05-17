@@ -2,7 +2,22 @@ import { getSessionOrGuest } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 import { streamFromModel, autoSelectModel, getAvailableProviders, ALL_MODELS } from '@/lib/providers/router';
 import { SYSTEM_PROMPTS } from '@/lib/prompts';
+import { detectLanguage, getLanguageInstruction } from '@/lib/language';
 import { getSupabaseAdmin } from '@/lib/supabase';
+
+// ── Creator question detection (hardcoded, never hallucinated) ──
+function isCreatorQuestion(text) {
+  const lower = text.toLowerCase();
+  return (
+    lower.match(/who (made|built|created|developed|designed) you/) ||
+    lower.match(/who('?s| is) your (creator|developer|maker|founder|owner|boss)/) ||
+    lower.match(/who are you from/) ||
+    lower.match(/which (company|team|person) (made|built|created) you/) ||
+    lower.match(/tumhe kisne banaya/) ||
+    lower.match(/tumhara creator kaun/) ||
+    lower.match(/kisne develop kiya/)
+  );
+}
 
 export async function POST(req) {
   const session = await getSessionOrGuest();
@@ -29,6 +44,39 @@ export async function POST(req) {
 
   const { messages, mode, modelId, threadId, ragContext } = await req.json();
 
+  // ── Creator question: return hardcoded response, no LLM needed ──
+  const lastUserMessage = messages[messages.length - 1]?.content || '';
+  if (isCreatorQuestion(lastUserMessage)) {
+    const creatorResponse = "I was built by Stealmount — also known as Singh. They designed me to be a capable, genuinely helpful AI companion.";
+
+    const stream = new ReadableStream({
+      start(controller) {
+        const tokens = creatorResponse.split(' ');
+        tokens.forEach((token, i) => {
+          setTimeout(() => {
+            controller.enqueue(
+              new TextEncoder().encode(`data: ${JSON.stringify({ choices: [{ delta: { content: token + (i < tokens.length - 1 ? ' ' : '') } }] })}\n\n`)
+            );
+            if (i === tokens.length - 1) {
+              controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+              controller.close();
+            }
+          }, i * 40);
+        });
+      }
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'X-Model-Used': 'JARVIS Core',
+        'X-Provider-Used': 'internal',
+        'X-Model-Id': 'jarvis-core',
+      },
+    });
+  }
+
   // Determine model
   const available = getAvailableProviders();
   let model;
@@ -38,8 +86,11 @@ export async function POST(req) {
   if (!model) model = autoSelectModel(mode || 'general', available);
   if (!model) return NextResponse.json({ error: 'No providers configured. Add at least one API key to .env.local' }, { status: 503 });
 
-  // Build system prompt
-  let systemPrompt = SYSTEM_PROMPTS[mode || 'general'];
+  // ── Build system prompt with language detection ──
+  const detectedLang = detectLanguage(lastUserMessage);
+  const langInstruction = getLanguageInstruction(detectedLang);
+  let systemPrompt = SYSTEM_PROMPTS[mode || 'general'] + '\n\n' + langInstruction;
+
   if (ragContext) {
     systemPrompt += `\n\n--- DOCUMENT CONTEXT ---\n${ragContext}\n--- END CONTEXT ---\nAnswer using the above context when relevant.`;
   }

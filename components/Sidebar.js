@@ -1,7 +1,7 @@
 'use client';
 import DuplexToggle from './DuplexToggle';
 
-export default function Sidebar({ threads, activeThreadId, onSelectThread, onNewThread, onDeleteThread, isDuplex, onToggleDuplex, isOpen, voiceGender, onVoiceGenderChange }) {
+export default function Sidebar({ threads, activeThreadId, onSelectThread, onNewThread, onDeleteThread, isDuplex, onToggleDuplex, isOpen, voiceGender, onVoiceGenderChange, onDuplexStateChange }) {
   const formatTime = (ts) => {
     if (!ts) return '';
     const d = new Date(ts);
@@ -39,7 +39,7 @@ export default function Sidebar({ threads, activeThreadId, onSelectThread, onNew
           </div>
         ))}
       </div>
-      <DuplexToggle isDuplex={isDuplex} onToggle={onToggleDuplex} voiceGender={voiceGender} onVoiceGenderChange={onVoiceGenderChange} />
+      <DuplexToggle isDuplex={isDuplex} onToggle={onToggleDuplex} voiceGender={voiceGender} onVoiceGenderChange={onVoiceGenderChange} onDuplexStateChange={onDuplexStateChange} />
     </aside>
   );
 }

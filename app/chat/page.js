@@ -9,30 +9,66 @@ import InputBar from '@/components/InputBar';
 import ModeSelector from '@/components/ModeSelector';
 import ModelPicker from '@/components/ModelPicker';
 import VoiceOrb from '@/components/VoiceOrb';
+import { splitIntoSentences, getPauseAfterSentence, getThinkingPause } from '@/lib/tts-pacing';
+import { stopDuplex } from '@/lib/duplex';
 
 const Cursor = dynamic(() => import('@/components/Cursor'), { ssr: false });
 
+// Full model catalog — synced with lib/providers/router.js
 const ALL_MODELS = [
-  { id:'deepseek-chat',label:'DeepSeek V3',provider:'deepseek',speed:'fast',tier:'free',bestFor:['general','study']},
-  { id:'deepseek-reasoner',label:'DeepSeek R1',provider:'deepseek',speed:'medium',tier:'free',bestFor:['deep']},
-  { id:'llama-3.1-8b-instant',label:'Llama 3.1 8B',provider:'groq',speed:'fast',tier:'free',bestFor:['general']},
-  { id:'llama-3.3-70b-versatile',label:'Llama 3.3 70B',provider:'groq',speed:'medium',tier:'free',bestFor:['study','research']},
-  { id:'gemma2-9b-it',label:'Gemma 2 9B',provider:'groq',speed:'fast',tier:'free',bestFor:['general']},
-  { id:'mixtral-8x7b-32768',label:'Mixtral 8x7B',provider:'groq',speed:'fast',tier:'free',bestFor:['general']},
-  { id:'deepseek/deepseek-r1:free',label:'DeepSeek R1 (OR)',provider:'openrouter',speed:'medium',tier:'free',bestFor:['deep']},
-  { id:'deepseek/deepseek-v3:free',label:'DeepSeek V3 (OR)',provider:'openrouter',speed:'fast',tier:'free',bestFor:['general']},
-  { id:'google/gemma-2-9b-it:free',label:'Gemma 2 9B (OR)',provider:'openrouter',speed:'fast',tier:'free',bestFor:['general']},
-  { id:'meta-llama/llama-3.1-8b-instruct:free',label:'Llama 3.1 8B (OR)',provider:'openrouter',speed:'fast',tier:'free',bestFor:['general']},
-  { id:'mistralai/mistral-7b-instruct:free',label:'Mistral 7B (OR)',provider:'openrouter',speed:'fast',tier:'free',bestFor:['general']},
-  { id:'microsoft/phi-3-mini-128k-instruct:free',label:'Phi-3 Mini (OR)',provider:'openrouter',speed:'fast',tier:'free',bestFor:['study']},
-  { id:'meta-llama/Llama-3-8b-chat-hf',label:'Llama 3 8B',provider:'together',speed:'fast',tier:'free',bestFor:['general']},
-  { id:'mistralai/Mistral-7B-Instruct-v0.2',label:'Mistral 7B',provider:'together',speed:'fast',tier:'free',bestFor:['general']},
-  { id:'gemini-1.5-flash',label:'Gemini 1.5 Flash',provider:'google',speed:'fast',tier:'free',bestFor:['general','research']},
-  { id:'gemini-2.0-flash-exp',label:'Gemini 2.0 Flash',provider:'google',speed:'fast',tier:'free',bestFor:['research']},
-  { id:'meta/llama-3.1-8b-instruct',label:'Llama 3.1 8B (NIM)',provider:'nvidia',speed:'fast',tier:'free',bestFor:['general']},
-  { id:'deepseek/deepseek-r1',label:'DeepSeek R1 (NIM)',provider:'nvidia',speed:'medium',tier:'free',bestFor:['deep']},
-  { id:'gpt-4o-mini',label:'GPT-4o Mini',provider:'openai',speed:'fast',tier:'paid',bestFor:['general']},
-  { id:'gpt-4o',label:'GPT-4o',provider:'openai',speed:'medium',tier:'paid',bestFor:['deep','research']},
+  // Cerebras
+  { id:'llama3.1-70b',label:'Llama 3.1 70B',provider:'cerebras',speed:'fast',tier:'free',specialty:'General · Ultra-fast',bestFor:['general','therapy'],description:'World\'s fastest free LLM inference.'},
+  { id:'llama3.1-8b',label:'Llama 3.1 8B',provider:'cerebras',speed:'fast',tier:'free',specialty:'General · Lightning fast',bestFor:['general'],description:'Extremely fast responses.'},
+  // SambaNova
+  { id:'Meta-Llama-3.1-405B-Instruct',label:'Llama 3.1 405B',provider:'sambanova',speed:'medium',tier:'free',specialty:'Reasoning · Deep analysis',bestFor:['deep','study'],description:'Largest open model.'},
+  { id:'Meta-Llama-3.1-70B-Instruct',label:'Llama 3.1 70B (SN)',provider:'sambanova',speed:'fast',tier:'free',specialty:'General · Balanced',bestFor:['general'],description:'Strong general model.'},
+  // Groq
+  { id:'llama-3.1-8b-instant',label:'Llama 3.1 8B Instant',provider:'groq',speed:'fast',tier:'free',specialty:'General · Instant replies',bestFor:['general'],description:'Ideal for voice.'},
+  { id:'llama-3.3-70b-versatile',label:'Llama 3.3 70B',provider:'groq',speed:'medium',tier:'free',specialty:'Study · Research',bestFor:['study','research'],description:'Versatile and capable.'},
+  { id:'gemma2-9b-it',label:'Gemma 2 9B',provider:'groq',speed:'fast',tier:'free',specialty:'General · Concise',bestFor:['general'],description:'Fast on Groq.'},
+  { id:'mixtral-8x7b-32768',label:'Mixtral 8x7B',provider:'groq',speed:'fast',tier:'free',specialty:'General · Long context',bestFor:['general'],description:'MoE model.'},
+  // OpenRouter
+  { id:'deepseek/deepseek-r1:free',label:'DeepSeek R1',provider:'openrouter',speed:'medium',tier:'free',specialty:'Reasoning · Math · Code',bestFor:['deep','study'],description:'Reasoning model.'},
+  { id:'deepseek/deepseek-v3:free',label:'DeepSeek V3',provider:'openrouter',speed:'fast',tier:'free',specialty:'Code · General',bestFor:['general','deep'],description:'Coding excellence.'},
+  { id:'google/gemma-2-9b-it:free',label:'Gemma 2 9B (OR)',provider:'openrouter',speed:'fast',tier:'free',specialty:'General · Concise',bestFor:['general'],description:'Google via OR.'},
+  { id:'mistralai/mistral-7b-instruct:free',label:'Mistral 7B',provider:'openrouter',speed:'fast',tier:'free',specialty:'General · Instruction following',bestFor:['general'],description:'Reliable.'},
+  { id:'microsoft/phi-3-mini-128k-instruct:free',label:'Phi-3 Mini 128K',provider:'openrouter',speed:'fast',tier:'free',specialty:'Long context · Code',bestFor:['study'],description:'128K context.'},
+  { id:'qwen/qwen-2.5-72b-instruct:free',label:'Qwen 2.5 72B',provider:'openrouter',speed:'medium',tier:'free',specialty:'Code · Multilingual',bestFor:['deep','study'],description:'Code + multilingual.'},
+  // Kimi
+  { id:'moonshot-v1-8k',label:'Kimi 8K',provider:'kimi',speed:'fast',tier:'free',specialty:'General · Code',bestFor:['general'],description:'Kimi model.'},
+  { id:'moonshot-v1-32k',label:'Kimi 32K',provider:'kimi',speed:'medium',tier:'free',specialty:'Long context · Code · Documents',bestFor:['study','research'],description:'32K context.'},
+  { id:'moonshot-v1-128k',label:'Kimi 128K',provider:'kimi',speed:'medium',tier:'free',specialty:'Ultra-long context · Research',bestFor:['research'],description:'128K context.'},
+  // MiniMax
+  { id:'abab6.5s-chat',label:'MiniMax 6.5s',provider:'minimax',speed:'fast',tier:'free',specialty:'Reasoning · Long context',bestFor:['deep','study'],description:'Strong reasoning.'},
+  { id:'abab5.5-chat',label:'MiniMax 5.5',provider:'minimax',speed:'fast',tier:'free',specialty:'General · Fast',bestFor:['general'],description:'Lighter model.'},
+  // Google
+  { id:'gemini-1.5-flash',label:'Gemini 1.5 Flash',provider:'google',speed:'fast',tier:'free',specialty:'General · Vision · Code',bestFor:['general','research'],description:'Google fastest.'},
+  { id:'gemini-2.0-flash-exp',label:'Gemini 2.0 Flash',provider:'google',speed:'fast',tier:'free',specialty:'Research · Multimodal',bestFor:['research'],description:'Latest flash.'},
+  // Mistral
+  { id:'mistral-small-latest',label:'Mistral Small',provider:'mistral',speed:'fast',tier:'free',specialty:'General · Efficient',bestFor:['general'],description:'Production grade.'},
+  { id:'open-mistral-7b',label:'Mistral 7B',provider:'mistral',speed:'fast',tier:'free',specialty:'General · Open source',bestFor:['general'],description:'Original Mistral.'},
+  { id:'codestral-latest',label:'Codestral',provider:'mistral',speed:'fast',tier:'free',specialty:'Code · 80+ languages',bestFor:['deep'],description:'Dedicated coding.'},
+  // Cohere
+  { id:'command-r',label:'Command R',provider:'cohere',speed:'fast',tier:'free',specialty:'RAG · Research · Retrieval',bestFor:['general','study'],description:'RAG optimized.'},
+  { id:'command-r-plus',label:'Command R+',provider:'cohere',speed:'medium',tier:'free',specialty:'Reasoning · Analysis',bestFor:['deep','study'],description:'Most capable.'},
+  // Cloudflare
+  { id:'@cf/meta/llama-3.1-8b-instruct',label:'Llama 3.1 8B (CF)',provider:'cloudflare',speed:'fast',tier:'free',specialty:'General · Edge inference',bestFor:['general'],description:'Edge network.'},
+  { id:'@cf/mistral/mistral-7b-instruct-v0.1',label:'Mistral 7B (CF)',provider:'cloudflare',speed:'fast',tier:'free',specialty:'General · Edge inference',bestFor:['general'],description:'Edge Mistral.'},
+  // NVIDIA
+  { id:'meta/llama-3.1-405b-instruct',label:'Llama 3.1 405B (NIM)',provider:'nvidia',speed:'medium',tier:'free',specialty:'Deep reasoning · Complex tasks',bestFor:['deep','study'],description:'405B on NVIDIA.'},
+  { id:'deepseek/deepseek-r1',label:'DeepSeek R1 (NIM)',provider:'nvidia',speed:'medium',tier:'free',specialty:'Math · Code · Reasoning',bestFor:['deep'],description:'Chain-of-thought.'},
+  // HuggingFace
+  { id:'mistralai/Mistral-7B-Instruct-v0.3',label:'Mistral 7B (HF)',provider:'huggingface',speed:'slow',tier:'free',specialty:'General · Open source',bestFor:['general'],description:'Always available.'},
+  { id:'google/gemma-7b-it',label:'Gemma 7B (HF)',provider:'huggingface',speed:'slow',tier:'free',specialty:'General',bestFor:['general'],description:'Google Gemma on HF.'},
+  // Sarvam
+  { id:'sarvam-2b-v0.5',label:'Sarvam 2B',provider:'sarvam',speed:'fast',tier:'free',specialty:'Hindi · Hinglish · Indian languages',bestFor:['general'],description:'India\'s own LLM.'},
+  // Together
+  { id:'meta-llama/Llama-3-8b-chat-hf',label:'Llama 3 8B',provider:'together',speed:'fast',tier:'free',specialty:'General · Chat',bestFor:['general'],description:'Llama 3 on Together.'},
+  // Fireworks
+  { id:'accounts/fireworks/models/llama-v3p1-8b-instruct',label:'Llama 3.1 8B (FW)',provider:'fireworks',speed:'fast',tier:'free',specialty:'General · Fast inference',bestFor:['general'],description:'Optimized inference.'},
+  // OpenAI (paid)
+  { id:'gpt-4o-mini',label:'GPT-4o Mini',provider:'openai',speed:'fast',tier:'paid',specialty:'General · All-round',bestFor:['general'],description:'Efficient paid model.'},
+  { id:'gpt-4o',label:'GPT-4o',provider:'openai',speed:'medium',tier:'paid',specialty:'Deep reasoning · Research',bestFor:['deep','research'],description:'Most capable OpenAI.'},
 ];
 
 export default function ChatPage() {
@@ -49,7 +85,7 @@ export default function ChatPage() {
   const [mode, setMode] = useState('general');
   const [autoMode, setAutoMode] = useState(true);
   const [selectedModelId, setSelectedModelId] = useState(null);
-  const [availableProviders, setAvailableProviders] = useState(['deepseek','groq','openrouter','google','together','nvidia']);
+  const [availableProviders, setAvailableProviders] = useState(['cerebras','sambanova','groq','openrouter','google','mistral','cohere','nvidia','cloudflare','sarvam','huggingface','together','fireworks','kimi','minimax','deepseek','openai']);
 
   // UI state
   const [streamingText, setStreamingText] = useState('');
@@ -497,6 +533,7 @@ export default function ChatPage() {
   const toggleDuplex = useCallback(async () => {
     if (isDuplex) {
       // Turn off
+      stopDuplex();
       if (vadRef.current) { vadRef.current.destroy(); vadRef.current = null; }
       speechSynthesis?.cancel();
       setIsDuplex(false);
@@ -504,83 +541,70 @@ export default function ChatPage() {
       return;
     }
 
-    // Turn on — init VAD
-    try {
-      const { MicVAD } = await import('@ricky0123/vad-web');
-      vadRef.current = await MicVAD.new({
-        positiveSpeechThreshold: 0.5,
-        negativeSpeechThreshold: 0.35,
-        redemptionFrames: 10,
-        minSpeechFrames: 5,
-        preSpeechPadFrames: 5,
+    // Turn on — uses the new lib/duplex.js init
+    // The actual VAD init is now handled inside DuplexToggle component
+    // which calls initDuplex from lib/duplex.js
+    setIsDuplex(true);
+    setVoiceState('listening');
+  }, [isDuplex]);
 
-        onSpeechStart() {
-          if (isAssistantSpeakingRef.current) {
-            // Smart interrupt logic
-            const buf = fullResponseBufRef.current;
-            const lastEnd = lastSentenceEndRef.current;
-            const inProgress = buf.slice(lastEnd);
-            const wordsSince = inProgress.trim().split(/\s+/).length;
-            if (wordsSince <= 4) {
-              // Few words into sentence — cut immediately
+  // Duplex state change handler (from DuplexToggle)
+  const handleDuplexStateChange = useCallback((state, data) => {
+    if (state === 'speech_start') {
+      if (isAssistantSpeakingRef.current) {
+        // Smart interrupt logic
+        const buf = fullResponseBufRef.current;
+        const lastEnd = lastSentenceEndRef.current;
+        const inProgress = buf.slice(lastEnd);
+        const wordsSince = inProgress.trim().split(/\s+/).length;
+        if (wordsSince <= 4) {
+          speechSynthesis?.cancel();
+          if (currentLLMReaderRef.current) { currentLLMReaderRef.current.cancel().catch(() => {}); currentLLMReaderRef.current = null; }
+          isAssistantSpeakingRef.current = false;
+        } else {
+          const nextPunct = inProgress.search(/[.!?।]/);
+          if (nextPunct > 0 && nextPunct < 80) {
+            setTimeout(() => {
               speechSynthesis?.cancel();
               if (currentLLMReaderRef.current) { currentLLMReaderRef.current.cancel().catch(() => {}); currentLLMReaderRef.current = null; }
               isAssistantSpeakingRef.current = false;
-            } else {
-              // Check if sentence end is close
-              const nextPunct = inProgress.search(/[.!?।]/);
-              if (nextPunct > 0 && nextPunct < 80) {
-                // Let current TTS utterance finish, then stop
-                setTimeout(() => {
-                  speechSynthesis?.cancel();
-                  if (currentLLMReaderRef.current) { currentLLMReaderRef.current.cancel().catch(() => {}); currentLLMReaderRef.current = null; }
-                  isAssistantSpeakingRef.current = false;
-                }, 800);
-              } else {
-                speechSynthesis?.cancel();
-                if (currentLLMReaderRef.current) { currentLLMReaderRef.current.cancel().catch(() => {}); currentLLMReaderRef.current = null; }
-                isAssistantSpeakingRef.current = false;
-              }
-            }
+            }, 800);
+          } else {
+            speechSynthesis?.cancel();
+            if (currentLLMReaderRef.current) { currentLLMReaderRef.current.cancel().catch(() => {}); currentLLMReaderRef.current = null; }
+            isAssistantSpeakingRef.current = false;
           }
-          setVoiceState('listening');
-        },
-
-        async onSpeechEnd(audioFloat32) {
-          setVoiceState('thinking');
-          // Convert Float32 to WAV
-          const wavBlob = float32ToWav(audioFloat32, 16000);
-          const form = new FormData();
-          form.append('file', wavBlob, 'speech.wav');
-          try {
-            const res = await fetch('/api/stt', { method: 'POST', body: form });
-            const { text } = await res.json();
-            if (text?.trim() && text.trim().length >= 2) {
-              sendMessage(text);
-            } else {
-              setVoiceState('listening');
-            }
-          } catch {
-            setVoiceState('listening');
-          }
-        },
-
-        onVADMisfire() {
-          if (!isAssistantSpeakingRef.current) setVoiceState('listening');
-        },
-      });
-      vadRef.current.start();
-      setIsDuplex(true);
+        }
+      }
       setVoiceState('listening');
-    } catch (e) {
-      console.error('VAD init failed:', e);
-      showToast('Voice activation failed. Check microphone permissions.');
+    } else if (state === 'speech_end') {
+      setVoiceState('thinking');
+      if (typeof data === 'string') {
+        // Fallback STT — data is text
+        if (data.trim().length >= 2) sendMessage(data);
+        else setVoiceState('listening');
+      } else if (data) {
+        // VAD — data is Float32Array
+        const wavBlob = float32ToWav(data, 16000);
+        const form = new FormData();
+        form.append('file', wavBlob, 'speech.wav');
+        fetch('/api/stt', { method: 'POST', body: form })
+          .then(r => r.json())
+          .then(({ text }) => {
+            if (text?.trim() && text.trim().length >= 2) sendMessage(text);
+            else setVoiceState('listening');
+          })
+          .catch(() => setVoiceState('listening'));
+      }
     }
-  }, [isDuplex, sendMessage, showToast]);
+  }, [sendMessage]);
 
   // Cleanup VAD on unmount
   useEffect(() => {
-    return () => { if (vadRef.current) vadRef.current.destroy(); };
+    return () => {
+      if (vadRef.current) vadRef.current.destroy();
+      stopDuplex();
+    };
   }, []);
 
 
@@ -615,6 +639,7 @@ export default function ChatPage() {
           isOpen={sidebarOpen}
           voiceGender={voiceGender}
           onVoiceGenderChange={handleVoiceGenderChange}
+          onDuplexStateChange={handleDuplexStateChange}
         />
         <div className="chat-area">
           <ChatFeed messages={messages} mode={mode} streamingText={streamingText} />
