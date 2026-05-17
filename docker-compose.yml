@@ -1,0 +1,11 @@
+version: '3.9'
+services:
+  jarvis:
+    build: ./server
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    env_file:
+      - .env
+    volumes:
+      - ./client:/app/client
+    restart: unless-stopped
