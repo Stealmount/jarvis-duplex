@@ -287,10 +287,125 @@ body::before{content:'';position:fixed;inset:0;z-index:1000;pointer-events:none;
 #cursor-dot{position:fixed;top:0;left:0;width:6px;height:6px;border-radius:50%;background:var(--accent);pointer-events:none;z-index:9999;transition:opacity 200ms,width 200ms,height 200ms;will-change:transform;}
 #cursor-ring{position:fixed;top:0;left:0;width:28px;height:28px;border-radius:50%;border:1px solid rgba(255,255,255,0.25);pointer-events:none;z-index:9998;transition:width 250ms var(--ease-spring),height 250ms var(--ease-spring),border-color 250ms;will-change:transform;}
 
-/* Responsive */
-@media(max-width:1024px){.right-panel{position:fixed;right:0;top:56px;bottom:0;transform:translateX(100%);z-index:90;background:var(--bg);}.right-panel.open{transform:translateX(0);}}
-@media(max-width:768px){.sidebar{position:fixed;left:0;top:56px;bottom:0;transform:translateX(-100%);z-index:90;background:var(--bg);}.sidebar.open{transform:translateX(0);}.msg{max-width:90%;}}
-
 /* Overlay for mobile drawers */
 .drawer-overlay{position:fixed;inset:0;top:56px;background:rgba(0,0,0,0.5);z-index:89;opacity:0;pointer-events:none;transition:opacity var(--duration-mid);}
 .drawer-overlay.show{opacity:1;pointer-events:auto;}
+
+/* ═══════════════════════════════════════════════ */
+/* ──────────── RESPONSIVE / MOBILE ──────────── */
+/* ═══════════════════════════════════════════════ */
+
+/* Tablet — collapse right panel to drawer */
+@media(max-width:1024px){
+  .right-panel{position:fixed;right:0;top:56px;bottom:0;width:280px;transform:translateX(100%);z-index:90;background:var(--bg);border-left:1px solid var(--border);}
+  .right-panel.open{transform:translateX(0);}
+}
+
+/* Mobile — full mobile overhaul */
+@media(max-width:768px){
+  /* Nav */
+  .top-nav{padding:0 12px;gap:8px;height:50px;}
+  .nav-logo{font-size:20px;}
+  .nav-status{padding:3px 8px;font-size:10px;gap:5px;}
+  .nav-status-dot{width:5px;height:5px;}
+  .nav-btn{padding:5px 8px;font-size:14px;}
+  .nav-avatar{width:28px;height:28px;}
+  .nav-spacer{flex:1;min-width:0;}
+  .dev-badge{padding:3px 6px;}
+  .dev-badge-text{font-size:8px;letter-spacing:0.1em;}
+  .usage-meter{font-size:10px;}
+  .usage-bar{width:40px;}
+  .theme-toggle{width:30px;height:30px;font-size:13px;}
+
+  /* Layout */
+  .app-layout{margin-top:50px;height:calc(100vh - 50px);}
+
+  /* Sidebar — full-width mobile drawer */
+  .sidebar{position:fixed !important;left:0;top:50px;bottom:0;width:85vw !important;max-width:320px;transform:translateX(-100%) !important;z-index:90;background:var(--bg);border-right:1px solid var(--border);overflow-y:auto;}
+  .sidebar.open{transform:translateX(0) !important;}
+  .duplex-card{margin:12px 10px;padding:12px;}
+  .duplex-title{font-size:14px;}
+  .duplex-desc{font-size:11px;}
+
+  /* Voice gender — stack better on small screens */
+  .voice-gender-section{margin-top:12px;padding-top:12px;}
+  .voice-gender-options{gap:6px;}
+  .voice-gender-btn{padding:10px 8px;}
+  .voice-gender-icon{font-size:18px;}
+  .voice-gender-name{font-size:12px;}
+
+  /* Right panel — full-width drawer on mobile */
+  .right-panel{position:fixed !important;right:0;top:50px;bottom:0;width:85vw !important;max-width:320px;transform:translateX(100%) !important;z-index:90;background:var(--bg);border-left:1px solid var(--border);overflow-y:auto;}
+  .right-panel.open{transform:translateX(0) !important;}
+
+  /* Chat area — MUST fill the remaining space */
+  .chat-area{flex:1;min-width:0;width:100%;}
+  .chat-feed{padding:16px 12px;gap:12px;}
+
+  /* Messages — wider on mobile */
+  .msg{max-width:92%;}
+  .msg-bubble{padding:10px 14px;font-size:13px;line-height:1.6;}
+  .msg-body pre{padding:10px;font-size:12px;}
+  .msg-body code{font-size:12px;}
+  .chat-empty-title{font-size:28px;}
+  .chat-empty-sub{font-size:9px;letter-spacing:0.2em;}
+
+  /* Input bar — full-width at bottom */
+  .input-bar-wrapper{padding:8px 10px 12px;position:sticky;bottom:0;z-index:10;}
+  .input-bar{padding:6px 10px;border-radius:14px;gap:6px;}
+  .chat-input{font-size:14px;}
+  .attach-btn,.send-btn{padding:5px;}
+  .mic-btn{width:32px;height:32px;}
+
+  /* Mode cards */
+  .mode-grid{gap:6px;}
+  .mode-card{padding:10px;}
+  .mode-name{font-size:11px;}
+  .mode-desc{font-size:9px;}
+
+  /* Model picker */
+  .model-card{padding:10px;}
+  .model-dropdown{max-height:200px;}
+  .model-option{padding:6px;}
+  .model-option-name{font-size:12px;}
+
+  /* Drawer overlay */
+  .drawer-overlay{top:50px;}
+
+  /* Avatar dropdown — position for mobile */
+  .avatar-dropdown{right:0;min-width:180px;}
+
+  /* Toast */
+  .toast{bottom:80px;left:50%;max-width:90vw;padding:10px 16px;font-size:12px;}
+
+  /* Cursor hidden on touch */
+  #cursor-dot,#cursor-ring{display:none !important;}
+
+  /* Landing page */
+  .landing-hero{font-size:clamp(60px,18vw,120px);}
+  .landing-card{width:92vw;max-width:400px;padding:28px 20px;margin:0 auto;}
+  .landing-card h2{font-size:20px;}
+  .landing-card p{font-size:13px;}
+  .landing-pill{font-size:9px;padding:3px 8px;}
+  .landing-footer{font-size:10px;}
+  .auth-btn{padding:12px 18px;font-size:14px;}
+  .auth-tabs{margin-bottom:14px;}
+  .auth-tab{font-size:12px;padding:6px 8px;}
+  .auth-input{padding:10px 12px;font-size:13px;}
+  .dev-notice{padding:10px 12px;font-size:11px;gap:8px;}
+}
+
+/* Small phones (iPhone SE, etc) */
+@media(max-width:380px){
+  .top-nav{padding:0 8px;gap:6px;}
+  .nav-logo{font-size:18px;}
+  .nav-status{display:none;}
+  .dev-badge-text{display:none;}
+  .usage-meter span{font-size:9px;}
+  .chat-empty-title{font-size:22px;}
+  .msg{max-width:95%;}
+  .landing-card{padding:24px 16px;}
+  .landing-hero{font-size:clamp(50px,20vw,80px);}
+  .voice-gender-options{grid-template-columns:1fr 1fr;gap:4px;}
+  .voice-gender-btn{padding:8px 6px;}
+}

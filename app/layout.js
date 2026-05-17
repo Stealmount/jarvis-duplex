@@ -30,6 +30,13 @@ const cormorant = Cormorant_Garamond({
   display: 'swap',
 });
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export const metadata = {
   title: 'JARVIS — Your Indian AI Companion',
   description: 'Voice-first AI companion with full-duplex conversation, research, therapy, and study modes. 50 free messages daily.',
