@@ -1,836 +1,1208 @@
 'use client';
-import { useState, useEffect, useRef, useCallback } from 'react';
+
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import dynamic from 'next/dynamic';
-import TopNav from '@/components/TopNav';
-import Sidebar from '@/components/Sidebar';
-import ChatFeed from '@/components/ChatFeed';
-import InputBar from '@/components/InputBar';
-import ModeSelector from '@/components/ModeSelector';
-import VoiceOrb from '@/components/VoiceOrb';
-import GreetingScreen from '@/components/GreetingScreen';
-import ModeSwitchBanner from '@/components/ModeSwitchBanner';
-import ActiveModelPanel from '@/components/ActiveModelPanel';
-import SearchModal from '@/components/SearchModal';
-import SettingsModal from '@/components/SettingsModal';
-import { splitIntoSentences, getPauseAfterSentence, getThinkingPause } from '@/lib/tts-pacing';
-import { getThinkingDelay, TOKEN_DISPLAY_DELAY_MS } from '@/lib/pacing';
-import { stopDuplex } from '@/lib/duplex';
-import { getLocalThreads, setLocalThreads, saveMessageToLocal, deleteLocalThread, setLocalCurrentThreadId } from '@/lib/storage';
-import { buildContextWindow } from '@/lib/context';
-import { initElevenLabsDuplex, getElevenLabsInstance, destroyElevenLabsDuplex } from '@/lib/elevenlabs-duplex';
-import { getGuestUsage, incrementGuestMessage, isGuestLimitReached } from '@/lib/guest';
 
+// ─── MODELS DATA ───
+const MODELS = [
+  // NVIDIA
+  { id: 'nvidia/nemotron-3-super', name: 'Nemotron 3 Super', provider: 'NVIDIA', category: 'general', description: 'State-of-the-art reasoning & coding', free: true },
+  { id: 'nvidia/nemotron-3-nano-30b-a3b', name: 'Nemotron 3 Nano 30B A3B', provider: 'NVIDIA', category: 'coding', description: 'Efficient coding assistant', free: true },
+  { id: 'nvidia/nemotron-3-nano-omni', name: 'Nemotron 3 Nano Omni', provider: 'NVIDIA', category: 'general', description: 'Multimodal understanding', free: true },
+  { id: 'nvidia/nemotron-nano-9b-v2', name: 'Nemotron Nano 9B V2', provider: 'NVIDIA', category: 'coding', description: 'Lightweight code generation', free: true },
+  { id: 'nvidia/nemotron-nano-12b-2-vl', name: 'Nemotron Nano 12B 2 VL', provider: 'NVIDIA', category: 'general', description: 'Vision-language model', free: true },
+  { id: 'nvidia/llama-nemotron-embed-vl-1b-v2', name: 'Llama Nemotron Embed VL 1B V2', provider: 'NVIDIA', category: 'general', description: 'Embedding & retrieval', free: true },
+  // Poolside
+  { id: 'poolside/laguna-m1', name: 'Laguna M.1', provider: 'Poolside', category: 'coding', description: 'Advanced code synthesis', free: true },
+  { id: 'poolside/laguna-xs2', name: 'Laguna XS.2', provider: 'Poolside', category: 'coding', description: 'Fast code completion', free: true },
+  // OpenAI
+  { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B', provider: 'OpenAI', category: 'reasoning', description: 'Deep reasoning & analysis', free: true },
+  { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B', provider: 'OpenAI', category: 'general', description: 'Balanced performance', free: true },
+  // Z.ai
+  { id: 'z-ai/glm-4.5-air', name: 'GLM 4.5 Air', provider: 'Z.ai', category: 'general', description: 'Fast general-purpose', free: true },
+  // DeepSeek
+  { id: 'deepseek/deepseek-v4-flash', name: 'DeepSeek V4 Flash', provider: 'DeepSeek', category: 'coding', description: 'Lightning-fast inference', free: true },
+  // MiniMax
+  { id: 'minimax/minimax-m2.5', name: 'MiniMax M2.5', provider: 'MiniMax', category: 'creative', description: 'Creative writing & chat', free: true },
+  // Arcee AI
+  { id: 'arcee/trinity-large-thinking', name: 'Trinity Large Thinking', provider: 'Arcee AI', category: 'reasoning', description: 'Deep chain-of-thought', free: true },
+  // Baidu
+  { id: 'baidu/cobuddy', name: 'CoBuddy', provider: 'Baidu Qianfan', category: 'general', description: 'Chinese-English bilingual', free: true },
+  // Google
+  { id: 'google/gemma-4-31b', name: 'Gemma 4 31B', provider: 'Google', category: 'general', description: 'Open-weight powerhouse', free: true },
+  // Additional strong models
+  { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4', provider: 'Anthropic', category: 'reasoning', description: 'Best-in-class reasoning', free: false },
+  { id: 'anthropic/claude-opus-4', name: 'Claude Opus 4', provider: 'Anthropic', category: 'coding', description: 'Elite coding & analysis', free: false },
+  { id: 'openai/gpt-4.1', name: 'GPT-4.1', provider: 'OpenAI', category: 'general', description: 'Latest GPT model', free: false },
+  { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google', category: 'general', description: 'Google\'s best model', free: false },
+  { id: 'x-ai/grok-3', name: 'Grok 3', provider: 'xAI', category: 'general', description: 'Real-time knowledge', free: false },
+  { id: 'deepseek/deepseek-v3', name: 'DeepSeek V3', provider: 'DeepSeek', category: 'coding', description: 'Top-tier code model', free: false },
+  { id: 'meta/llama-4-maverick', name: 'Llama 4 Maverick', provider: 'Meta', category: 'general', description: 'Open-source leader', free: false },
+  { id: 'qwen/qwen3-235b', name: 'Qwen3 235B', provider: 'Alibaba', category: 'coding', description: 'Massive coding model', free: false },
+  { id: 'mistral/mistral-large-3', name: 'Mistral Large 3', provider: 'Mistral', category: 'general', description: 'European excellence', free: false },
+  { id: 'cohere/command-r-plus', name: 'Command R+', provider: 'Cohere', category: 'general', description: 'Enterprise-ready', free: false },
+];
 
+const CATEGORIES = [
+  { key: 'all', label: 'All Models' },
+  { key: 'coding', label: '💻 Code' },
+  { key: 'reasoning', label: '🧠 Deep Think' },
+  { key: 'general', label: '💬 General' },
+  { key: 'creative', label: '✨ Creative' },
+];
 
 export default function ChatPage() {
   const router = useRouter();
-
-  // Auth state
+  
+  // App core states
   const [userInfo, setUserInfo] = useState(null);
-  const [voiceGender, setVoiceGender] = useState('female');
-
-  // Core state
-  const [threads, setThreads] = useState([]);
-  const [activeThreadId, setActiveThreadId] = useState(null);
+  const [isDark, setIsDark] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('nvidia/nemotron-3-super');
+  const [activeCategory, setActiveCategory] = useState('all');
+  
   const [messages, setMessages] = useState([]);
-  const [mode, setMode] = useState('general');
-  const [activeModelDisplay, setActiveModelDisplay] = useState(null);
-  const [activeProviderDisplay, setActiveProviderDisplay] = useState(null);
-  const [availableProviders, setAvailableProviders] = useState(['cerebras','sambanova','groq','openrouter','google','mistral','cohere','nvidia','cloudflare','sarvam','huggingface','together','fireworks','kimi','minimax','deepseek','openai','xai','aimlapi']);
-
-  // UI state
-  const [streamingText, setStreamingText] = useState('');
-  const [streamingModel, setStreamingModel] = useState('');
+  const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [voiceState, setVoiceState] = useState('idle');
-  const [isDuplex, setIsDuplex] = useState(false);
-  const [usage, setUsage] = useState({ count: 0, limit: 50 });
-  const [attachments, setAttachments] = useState([]);
-  const [ragContext, setRagContext] = useState('');
-  const [toastMsg, setToastMsg] = useState('');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(false);
-  const [isModeSelectorOpen, setIsModeSelectorOpen] = useState(false);
-  const [modeSwitchWarning, setModeSwitchWarning] = useState(null);
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [conversations, setConversations] = useState([]);
+  
+  // Voice, API keys, etc.
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [voiceGender, setVoiceGender] = useState('female');
+  const [apiKey, setApiKey] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
+  
+  const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
 
-  // Check auth on mount
+  // 1. Initial configuration and validation checks
   useEffect(() => {
-    const stored = localStorage.getItem('jarvis_user');
-    if (!stored) { router.push('/'); return; }
-    try { setUserInfo(JSON.parse(stored)); } catch { router.push('/'); }
-    const savedGender = localStorage.getItem('jarvis_voice_gender');
-    if (savedGender) setVoiceGender(savedGender);
-  }, [router]);
-
-  const isDeveloper = userInfo?.role === 'developer';
-
-  // Voice refs
-  const vadRef = useRef(null);
-  const isAssistantSpeakingRef = useRef(false);
-  const currentLLMReaderRef = useRef(null);
-  const pttTimerRef = useRef(null);
-  const pttRecordingRef = useRef(false);
-  const pttStreamRef = useRef(null);
-  const pttRecorderRef = useRef(null);
-  const pttChunksRef = useRef([]);
-  const fullResponseBufRef = useRef('');
-  const lastSentenceEndRef = useRef(0);
-
-  // Fetch usage on mount + dual-layer thread loading
-  useEffect(() => {
-    if (userInfo?.role === 'guest') {
-      const gUsage = getGuestUsage();
-      if (gUsage) setUsage({ count: gUsage.messages, limit: gUsage.msgLimit });
-    } else {
-      fetch('/api/usage').then(r => r.json()).then(d => {
-        if (d.count !== undefined) setUsage({ count: d.count, limit: d.limit });
-      }).catch(() => {});
+    const storedUser = localStorage.getItem('jarvis_user');
+    if (!storedUser) {
+      router.push('/');
+      return;
     }
-
-    // 1. Load from localStorage immediately (zero flash)
-    const localData = getLocalThreads();
-    const localThreadArray = Object.entries(localData)
-      .filter(([, v]) => v && v.meta)
-      .map(([id, v]) => ({ id, ...v.meta }))
-      .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
-    if (localThreadArray.length > 0) setThreads(localThreadArray);
-
-    // 2. Fetch from DB in background, merge
-    fetch('/api/threads').then(r => r.json()).then(data => {
-      if (Array.isArray(data) && data.length > 0) {
-        setThreads(data);
-        // Update localStorage with DB data
-        const newLocal = { ...localData };
-        data.forEach(t => {
-          if (!newLocal[t.id]) newLocal[t.id] = { messages: [], meta: t, synced: true };
-          else { newLocal[t.id].meta = t; newLocal[t.id].synced = true; }
-        });
-        setLocalThreads(newLocal);
-      }
-    }).catch(() => {});
-  }, []);
-
-  // Entrance animation
-  useEffect(() => {
-    const items = ['.top-nav','.sidebar','.right-panel','.chat-feed','.input-bar-wrapper'];
-    items.forEach((sel, i) => {
-      const el = document.querySelector(sel);
-      if (!el) return;
-      el.style.opacity = '0';
-      el.style.transform = 'translateY(12px)';
-      setTimeout(() => {
-        el.style.transition = 'opacity 600ms cubic-bezier(0.16,1,0.3,1), transform 600ms cubic-bezier(0.16,1,0.3,1)';
-        el.style.opacity = '1';
-        el.style.transform = 'translateY(0)';
-      }, i * 100 + 100);
-    });
-  }, []);
-
-  // Show toast
-  const showToast = useCallback((msg) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3000);
-  }, []);
-
-  // ── Thread Management ──
-  const createThread = useCallback(async () => {
-    // Create in DB
     try {
-      const res = await fetch('/api/threads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: 'New conversation', mode }),
-      });
-      const newThread = await res.json();
-      if (newThread.id) {
-        setThreads(prev => [newThread, ...prev]);
-        setActiveThreadId(newThread.id);
-        setLocalCurrentThreadId(newThread.id);
-        setMessages([]);
-        setStreamingText('');
-        setRagContext('');
-        setAttachments([]);
-        // Cache in localStorage
-        const local = getLocalThreads();
-        local[newThread.id] = { messages: [], meta: newThread, synced: true };
-        setLocalThreads(local);
-        setModeSwitchWarning(null);
-        return newThread.id;
-      }
-    } catch (e) { console.error('Create thread failed:', e); }
-    // Fallback to client-side only
-    const fallbackId = crypto.randomUUID();
-    const fallback = { id: fallbackId, title: 'New conversation', mode, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-    setThreads(prev => [fallback, ...prev]);
-    setActiveThreadId(fallbackId);
-    setLocalCurrentThreadId(fallbackId);
-    setMessages([]);
-    setStreamingText('');
-    setRagContext('');
-    setAttachments([]);
-    // Cache in localStorage
-    const local = getLocalThreads();
-    local[fallbackId] = { messages: [], meta: fallback, synced: false };
-    setLocalThreads(local);
-    setModeSwitchWarning(null);
-    return fallbackId;
-  }, [mode]);
-
-  const deleteThread = useCallback((id) => {
-    setThreads(prev => prev.filter(t => t.id !== id));
-    if (activeThreadId === id) { setActiveThreadId(null); setMessages([]); }
-    deleteLocalThread(id);
-    fetch('/api/threads', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ threadId: id }) }).catch(() => {});
-  }, [activeThreadId]);
-
-  const selectThread = useCallback(async (id) => {
-    setActiveThreadId(id);
-    setLocalCurrentThreadId(id);
-    const thread = threads.find(t => t.id === id);
-    if (thread?.mode) setMode(thread.mode);
-    setStreamingText('');
-    setModeSwitchWarning(null);
-
-    // 1. Load from localStorage instantly (zero flash)
-    const localData = getLocalThreads();
-    if (localData[id]?.messages?.length > 0) {
-      setMessages(localData[id].messages.map((m, i) => ({ id: m.id || `local-${i}`, ...m })));
-    } else {
-      setMessages([]);
-    }
-
-    // 2. Backfill from DB in background
-    try {
-      const res = await fetch(`/api/messages?threadId=${id}`);
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        setMessages(data);
-        // Update localStorage cache
-        const updated = getLocalThreads();
-        if (!updated[id]) updated[id] = { messages: [], meta: {} };
-        updated[id].messages = data.slice(-100);
-        setLocalThreads(updated);
-      }
-    } catch {}
-  }, [threads]);
-
-  // ── SSE Stream Parser ──
-  const parseSSEStream = useCallback(async (response, onToken, onDone) => {
-    const reader = response.body.getReader();
-    currentLLMReaderRef.current = reader;
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    try {
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const payload = line.slice(6).trim();
-          if (payload === '[DONE]') { onDone(); return; }
-          try {
-            const parsed = JSON.parse(payload);
-            const token = parsed.choices?.[0]?.delta?.content || '';
-            if (token) {
-              onToken(token);
-              await new Promise(r => setTimeout(r, TOKEN_DISPLAY_DELAY_MS));
-            }
-          } catch {}
-        }
-      }
-    } catch (e) {
-      if (e.name !== 'AbortError') console.error('Stream error:', e);
-    }
-    onDone();
-  }, []);
-
-  // ── TTS with Indian neutral accent voice selection ──
-  const getIndianVoice = useCallback((gender) => {
-    const voices = speechSynthesis?.getVoices() || [];
-    const genderKey = gender || voiceGender || 'female';
-    // Priority: Indian English voices
-    const indianVoices = voices.filter(v =>
-      v.lang.startsWith('en') && (v.name.toLowerCase().includes('india') || v.lang.includes('IN'))
-    );
-    // Try to match gender preference
-    const genderHints = genderKey === 'male'
-      ? ['male', 'ravi', 'raj', 'amit', 'man', 'guy']
-      : ['female', 'woman', 'girl', 'aditi', 'priya', 'neerja', 'lekha'];
-    const genderMatch = indianVoices.find(v =>
-      genderHints.some(h => v.name.toLowerCase().includes(h))
-    );
-    if (genderMatch) return genderMatch;
-    if (indianVoices.length > 0) return indianVoices[0];
-    // Fallback: any English voice matching gender hints
-    const engVoices = voices.filter(v => v.lang.startsWith('en'));
-    const engGender = engVoices.find(v =>
-      genderHints.some(h => v.name.toLowerCase().includes(h))
-    );
-    if (engGender) return engGender;
-    return engVoices[0] || voices[0] || null;
-  }, [voiceGender]);
-
-  const speakSentence = useCallback((text) => {
-    return new Promise(resolve => {
-      // Try ElevenLabs duplex first (if available)
-      const elInstance = getElevenLabsInstance();
-      if (elInstance) {
-        try {
-          elInstance.sendText(text);
-          resolve(); // ElevenLabs handles playback asynchronously
-          return;
-        } catch { /* fall through to browser TTS */ }
-      }
-
-      // Fallback: browser SpeechSynthesis
-      if (typeof window === 'undefined' || !window.speechSynthesis) { resolve(); return; }
-      const utt = new SpeechSynthesisUtterance(text);
-      utt.rate = 1.05;
-      utt.pitch = voiceGender === 'male' ? 0.9 : 1.1;
-      const voice = getIndianVoice(voiceGender);
-      if (voice) utt.voice = voice;
-      utt.onend = resolve;
-      utt.onerror = resolve;
-      speechSynthesis.speak(utt);
-    });
-  }, [voiceGender, getIndianVoice]);
-
-  // ── Send Message ──
-  const sendMessage = useCallback(async (content) => {
-    if (!content.trim() && attachments.length === 0) return;
-    // Limit Check
-    if (!isDeveloper) {
-      if (userInfo?.role === 'guest') {
-        if (isGuestLimitReached('message')) {
-          showToast(`⚡ Guest limit reached (50/50). Please create an account!`);
-          return;
-        }
-      } else if (usage.count >= usage.limit) {
-        showToast(`⚡ Daily limit reached (${usage.limit}/${usage.limit}). Resets at midnight!`);
-        return;
-      }
-    }
-
-    let threadId = activeThreadId;
-    if (!threadId) threadId = await createThread();
-
-    // Build user message
-    const userMsg = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content,
-      created_at: new Date().toISOString(),
-      attachments: [...attachments],
-    };
-    setMessages(prev => [...prev, userMsg]);
-    setAttachments([]);
-    setIsLoading(true);
-    setVoiceState('thinking');
-    setModeSwitchWarning(null); // Clear warning on send
-    // Cache user message in localStorage
-    saveMessageToLocal(threadId, { role: 'user', content, created_at: userMsg.created_at });
-
-    // Build messages array for API with context window compression
-    const allMsgs = [...messages, { role: 'user', content }].map(m => ({
-      role: m.role,
-      content: m.content,
-    }));
-    // Apply rolling context window — last 20 verbatim, older messages summarized
-    const localData = getLocalThreads();
-    const threadSummary = localData[threadId]?.meta?.summary || null;
-    const apiMessages = buildContextWindow(allMsgs, threadSummary);
-
-    // Auto-title thread from first message
-    if (messages.length === 0) {
-      const title = content.slice(0, 50) + (content.length > 50 ? '...' : '');
-      setThreads(prev => prev.map(t => t.id === threadId ? { ...t, title } : t));
-    }
-
-    // Auto-search for research mode
-    let searchContext = ragContext || '';
-    if (mode === 'research') {
-      try {
-        const searchRes = await fetch('/api/search', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: content }),
-        });
-        const searchData = await searchRes.json();
-        if (searchData.source === 'tavily' && searchData.results?.length) {
-          const searchText = searchData.results.map(r => `[${r.title}](${r.url}): ${r.content}`).join('\n\n');
-          searchContext += `\n\n--- WEB SEARCH RESULTS ---\n${searchData.answer || ''}\n\n${searchText}\n--- END SEARCH ---`;
-        }
-      } catch (e) { console.error('Search failed:', e); }
-    }
-
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: apiMessages,
-          mode,
-          threadId,
-          ragContext: searchContext || null,
-        }),
-      });
-
-      if (res.status === 429) {
-        showToast(`⚡ Daily limit reached (${usage.limit}/${usage.limit}). Resets at midnight!`);
-        setIsLoading(false);
-        setVoiceState(isDuplex ? 'listening' : 'idle');
-        return;
-      }
-
-      if (!res.ok) {
-        const err = await res.json();
-        showToast(`Error: ${err.error || 'Request failed'}`);
-        setIsLoading(false);
-        setVoiceState(isDuplex ? 'listening' : 'idle');
-        return;
-      }
-
-      const modelUsed = res.headers.get('X-Model-Used') || '';
-      const providerUsed = res.headers.get('X-Provider-Used') || '';
-      setStreamingModel(modelUsed);
-      setVoiceState('speaking');
-      isAssistantSpeakingRef.current = true;
-      fullResponseBufRef.current = '';
-      lastSentenceEndRef.current = 0;
-
-      let fullText = '';
-      let sentenceBuffer = '';
-
-      // Artificial thinking delay (makes AI feel deliberate)
-      const thinkingDelay = getThinkingDelay(mode, content);
-      await new Promise(r => setTimeout(r, thinkingDelay));
-
-      await parseSSEStream(
-        res,
-        (token) => {
-          fullText += token;
-          fullResponseBufRef.current = fullText;
-          setStreamingText(fullText);
-
-          // Sentence-level TTS
-          sentenceBuffer += token;
-          const sentenceEnd = sentenceBuffer.search(/[.!?।\n]/);
-          if (sentenceEnd > 0) {
-            const toSpeak = sentenceBuffer.slice(0, sentenceEnd + 1).trim();
-            sentenceBuffer = sentenceBuffer.slice(sentenceEnd + 1);
-            lastSentenceEndRef.current = fullText.length - sentenceBuffer.length;
-            if (toSpeak.length > 2 && isDuplex) speakSentence(toSpeak);
-          }
-        },
-        () => {
-          // Speak remaining buffer
-          if (sentenceBuffer.trim().length > 2 && isDuplex) speakSentence(sentenceBuffer.trim());
-
-          // Finalize message
-          const assistantMsg = {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            content: fullText,
-            model: modelUsed,
-            provider: providerUsed,
-            mode,
-            created_at: new Date().toISOString(),
-          };
-          setMessages(prev => [...prev, assistantMsg]);
-          setStreamingText('');
-          setStreamingModel('');
-          setIsLoading(false);
-          isAssistantSpeakingRef.current = false;
-          fullResponseBufRef.current = '';
-          lastSentenceEndRef.current = 0;
-          setVoiceState(isDuplex ? 'listening' : 'idle');
-          setUsage(prev => ({ ...prev, count: prev.count + 1 }));
-          if (userInfo?.role === 'guest') incrementGuestMessage();
-
-          // Cache assistant message in localStorage
-          saveMessageToLocal(threadId, { role: 'assistant', content: fullText, model: modelUsed, provider: providerUsed, mode, created_at: assistantMsg.created_at });
-
-          // Save assistant message to DB (async)
-          if (threadId && fullText) {
-            fetch('/api/chat/save', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ threadId, content: fullText, model: modelUsed, mode }),
-            }).catch(() => {});
-          }
-        }
-      );
-    } catch (err) {
-      console.error('Send error:', err);
-      showToast('Failed to send message');
-      setIsLoading(false);
-      setVoiceState(isDuplex ? 'listening' : 'idle');
-    }
-  }, [activeThreadId, messages, mode, ragContext, isDuplex, usage, attachments, createThread, showToast, parseSSEStream, speakSentence]);
-
-  // ── File Handling ──
-  const handleFileSelect = useCallback(async (file) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    if (activeThreadId) formData.append('threadId', activeThreadId);
-
-    try {
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
-      const data = await res.json();
-      if (res.ok) {
-        setAttachments(prev => [...prev, { fileName: data.fileName, fileType: data.fileType, path: data.path }]);
-
-        // Handle client-side text extraction
-        if (data.extractedText === '__CLIENT_EXTRACT__' && file.type === 'application/pdf') {
-          try {
-            const pdfjsLib = await import('pdfjs-dist');
-            pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
-            const buf = await file.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-            let text = '';
-            for (let i = 1; i <= Math.min(pdf.numPages, 50); i++) {
-              const page = await pdf.getPage(i);
-              const content = await page.getTextContent();
-              text += content.items.map(item => item.str).join(' ') + '\n';
-            }
-            setRagContext(prev => prev + '\n' + text.slice(0, 100000));
-          } catch (e) { console.error('PDF extraction failed:', e); }
-        } else if (data.extractedText === '__CLIENT_EXTRACT_DOCX__') {
-          try {
-            const mammoth = await import('mammoth');
-            const buf = await file.arrayBuffer();
-            const result = await mammoth.extractRawText({ arrayBuffer: buf });
-            setRagContext(prev => prev + '\n' + result.value.slice(0, 100000));
-          } catch (e) { console.error('DOCX extraction failed:', e); }
-        } else if (data.extractedText && !data.extractedText.startsWith('__')) {
-          setRagContext(prev => prev + '\n' + data.extractedText);
-        }
-        showToast(`📎 ${data.fileName} attached`);
-      } else {
-        showToast(`Upload failed: ${data.error}`);
-      }
-    } catch (e) {
-      showToast('Upload failed');
-    }
-  }, [activeThreadId, showToast]);
-
-  // ── PTT (Push-to-Talk) ──
-  const handlePTTStart = useCallback(() => {
-    const micBtn = document.getElementById('mic-btn');
-    if (micBtn) micBtn.classList.add('ptt-charging');
-
-    pttTimerRef.current = setTimeout(async () => {
-      pttRecordingRef.current = true;
-      if (micBtn) { micBtn.classList.remove('ptt-charging'); micBtn.classList.add('ptt-recording'); }
-      pttChunksRef.current = [];
-      try {
-        pttStreamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
-        pttRecorderRef.current = new MediaRecorder(pttStreamRef.current);
-        pttRecorderRef.current.ondataavailable = e => pttChunksRef.current.push(e.data);
-        pttRecorderRef.current.start();
-        setVoiceState('listening');
-      } catch (e) {
-        showToast('Microphone access denied');
-        pttRecordingRef.current = false;
-        if (micBtn) micBtn.classList.remove('ptt-recording');
-      }
-    }, 2000);
-  }, [showToast]);
-
-  const handlePTTEnd = useCallback(() => {
-    clearTimeout(pttTimerRef.current);
-    const micBtn = document.getElementById('mic-btn');
-    if (micBtn) micBtn.classList.remove('ptt-charging', 'ptt-recording');
-
-    if (!pttRecordingRef.current) return;
-    pttRecordingRef.current = false;
-
-    if (pttRecorderRef.current && pttRecorderRef.current.state !== 'inactive') {
-      pttRecorderRef.current.stop();
-      pttRecorderRef.current.onstop = async () => {
-        const blob = new Blob(pttChunksRef.current, { type: 'audio/webm' });
-        if (pttStreamRef.current) pttStreamRef.current.getTracks().forEach(t => t.stop());
-
-        setVoiceState('thinking');
-        const form = new FormData();
-        form.append('file', blob, 'ptt.webm');
-        try {
-          const res = await fetch('/api/stt', { method: 'POST', body: form });
-          const { text } = await res.json();
-          if (text?.trim()) sendMessage(text);
-          else setVoiceState('idle');
-        } catch {
-          showToast('Transcription failed');
-          setVoiceState('idle');
-        }
-      };
-    }
-  }, [sendMessage, showToast]);
-
-  // ── Full Duplex VAD ──
-  const toggleDuplex = useCallback(async () => {
-    if (isDuplex) {
-      // Turn off
-      stopDuplex();
-      destroyElevenLabsDuplex();
-      if (vadRef.current) { vadRef.current.destroy(); vadRef.current = null; }
-      speechSynthesis?.cancel();
-      setIsDuplex(false);
-      setVoiceState('idle');
+      setUserInfo(JSON.parse(storedUser));
+    } catch {
+      router.push('/');
       return;
     }
 
-    // Turn on — try ElevenLabs duplex first, fallback to browser TTS
-    setIsDuplex(true);
-    setVoiceState('listening');
+    // Load saved settings
+    const savedTheme = localStorage.getItem('jarvis_theme') || 'dark';
+    setIsDark(savedTheme === 'dark');
+    document.documentElement.setAttribute('data-theme', savedTheme);
 
-    // Attempt ElevenLabs WebSocket connection (async, non-blocking)
-    try {
-      const tokenRes = await fetch('/api/tts/token');
-      if (tokenRes.ok) {
-        const { key, voices } = await tokenRes.json();
-        if (key) {
-          const voiceId = voiceGender === 'male' ? voices?.male : voices?.female;
-          const el = await initElevenLabsDuplex(key, voiceGender);
-          if (el) {
-            console.log('[JARVIS] ElevenLabs duplex connected');
-            el.onEnd = () => {
-              if (!isAssistantSpeakingRef.current) setVoiceState('listening');
-            };
-          }
-        }
-      }
-    } catch (e) {
-      console.log('[JARVIS] ElevenLabs unavailable, using browser TTS:', e.message);
-    }
-  }, [isDuplex, voiceGender]);
+    const savedVoiceGender = localStorage.getItem('jarvis_voice_gender') || 'female';
+    setVoiceGender(savedVoiceGender);
 
-  // Duplex state change handler (from DuplexToggle)
-  const handleDuplexStateChange = useCallback((state, data) => {
-    if (state === 'speech_start') {
-      if (isAssistantSpeakingRef.current) {
-        // Smart interrupt logic
-        const buf = fullResponseBufRef.current;
-        const lastEnd = lastSentenceEndRef.current;
-        const inProgress = buf.slice(lastEnd);
-        const wordsSince = inProgress.trim().split(/\s+/).length;
-        if (wordsSince <= 4) {
-          speechSynthesis?.cancel();
-          if (currentLLMReaderRef.current) { currentLLMReaderRef.current.cancel().catch(() => {}); currentLLMReaderRef.current = null; }
-          isAssistantSpeakingRef.current = false;
-        } else {
-          const nextPunct = inProgress.search(/[.!?।]/);
-          if (nextPunct > 0 && nextPunct < 80) {
-            setTimeout(() => {
-              speechSynthesis?.cancel();
-              if (currentLLMReaderRef.current) { currentLLMReaderRef.current.cancel().catch(() => {}); currentLLMReaderRef.current = null; }
-              isAssistantSpeakingRef.current = false;
-            }, 800);
-          } else {
-            speechSynthesis?.cancel();
-            if (currentLLMReaderRef.current) { currentLLMReaderRef.current.cancel().catch(() => {}); currentLLMReaderRef.current = null; }
-            isAssistantSpeakingRef.current = false;
-          }
-        }
-      }
-      setVoiceState('listening');
-    } else if (state === 'speech_end') {
-      setVoiceState('thinking');
-      if (typeof data === 'string') {
-        // Fallback STT — data is text
-        if (data.trim().length >= 2) sendMessage(data);
-        else setVoiceState('listening');
-      } else if (data) {
-        // VAD — data is Float32Array
-        const wavBlob = float32ToWav(data, 16000);
-        const form = new FormData();
-        form.append('file', wavBlob, 'speech.wav');
-        fetch('/api/stt', { method: 'POST', body: form })
-          .then(r => r.json())
-          .then(({ text }) => {
-            if (text?.trim() && text.trim().length >= 2) sendMessage(text);
-            else setVoiceState('listening');
-          })
-          .catch(() => setVoiceState('listening'));
+    const savedApiKey = localStorage.getItem('openrouter_api_key') || '';
+    setApiKey(savedApiKey);
+
+    // Retrieve conversation history
+    const savedConversations = localStorage.getItem('jarvis_conversations');
+    if (savedConversations) {
+      try {
+        setConversations(JSON.parse(savedConversations));
+      } catch (e) {
+        console.error('Failed to parse cached threads:', e);
       }
     }
-  }, [sendMessage]);
+  }, [router]);
 
-  // Cleanup VAD + ElevenLabs on unmount
+  // Adjust responsive sidebar on smaller displays
   useEffect(() => {
-    return () => {
-      if (vadRef.current) vadRef.current.destroy();
-      stopDuplex();
-      destroyElevenLabsDuplex();
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setSidebarOpen(false);
+      } else {
+        setSidebarOpen(true);
+      }
     };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-
-  const handleVoiceGenderChange = useCallback((gender) => {
-    setVoiceGender(gender);
-    localStorage.setItem('jarvis_voice_gender', gender);
-  }, []);
-
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-
-  const handleNavAction = useCallback((action) => {
-    switch (action) {
-      case 'new_chat':
-        createThread();
-        setMobileSidebarOpen(false);
-        break;
-      case 'search':
-        setSearchOpen(true);
-        break;
-      case 'chats':
-        router.push('/chats');
-        break;
-      case 'projects':
-        router.push('/projects');
-        break;
-      case 'artifacts':
-        router.push('/artifacts');
-        break;
-      case 'imagine':
-        router.push('/imagine');
-        break;
+  // Auto-resize textarea
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = inputRef.current.scrollHeight + 'px';
     }
-  }, [createThread, router]);
+  }, [input]);
+
+  const selectedModelData = MODELS.find(m => m.id === selectedModel);
+
+  const filteredModels = activeCategory === 'all'
+    ? MODELS
+    : MODELS.filter(m => m.category === activeCategory);
+
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
+
+    const userMsg = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: input.trim(),
+      timestamp: new Date().toISOString(),
+    };
+
+    const currentMessages = [...messages, userMsg];
+    setMessages(currentMessages);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: currentMessages.map(m => ({
+            role: m.role,
+            content: m.content,
+          })),
+          model: selectedModel,
+          apiKey: apiKey || undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.status === 401) {
+        throw new Error(data.error || 'API Key is missing');
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Server error');
+      }
+
+      const assistantMsg = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: data.content || 'Sorry, I couldn\'t process that request.',
+        model: selectedModelData?.name,
+        timestamp: new Date().toISOString(),
+      };
+
+      const finalMessages = [...currentMessages, assistantMsg];
+      setMessages(finalMessages);
+
+      // Speak text if voice is active
+      if (voiceEnabled && typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        const utt = new SpeechSynthesisUtterance(assistantMsg.content.slice(0, 300));
+        utt.rate = 1.05;
+        utt.pitch = voiceGender === 'male' ? 0.95 : 1.1;
+        speechSynthesis.speak(utt);
+      }
+
+      // Proactively cache thread if it's the first message exchange
+      if (messages.length === 0) {
+        const newConv = {
+          id: Date.now().toString(),
+          title: userMsg.content.slice(0, 30) + (userMsg.content.length > 30 ? '...' : ''),
+          messages: finalMessages,
+          model: selectedModel,
+          createdAt: new Date().toISOString(),
+        };
+        const updatedConvs = [newConv, ...conversations];
+        setConversations(updatedConvs);
+        localStorage.setItem('jarvis_conversations', JSON.stringify(updatedConvs));
+      } else {
+        // Update active thread context
+        const activeIdx = conversations.findIndex(c => c.messages[0]?.id === messages[0]?.id);
+        if (activeIdx !== -1) {
+          const updatedConvs = [...conversations];
+          updatedConvs[activeIdx].messages = finalMessages;
+          setConversations(updatedConvs);
+          localStorage.setItem('jarvis_conversations', JSON.stringify(updatedConvs));
+        }
+      }
+    } catch (error) {
+      const errorMsg = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: `⚠️ Error: ${error.message || 'Error connecting to the model. Check your API key.'}`,
+        timestamp: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const startNewChat = () => {
+    setMessages([]);
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  };
+
+  const handleRecentSelect = (conv) => {
+    setMessages(conv.messages);
+    setSelectedModel(conv.model);
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  };
+
+  const handleThemeChange = () => {
+    const nextTheme = isDark ? 'light' : 'dark';
+    setIsDark(!isDark);
+    document.documentElement.setAttribute('data-theme', nextTheme);
+    localStorage.setItem('jarvis_theme', nextTheme);
+  };
+
+  const handleApiKeySave = (val) => {
+    setApiKey(val);
+    localStorage.setItem('openrouter_api_key', val);
+  };
+
+  const handleVoiceGenderChange = (val) => {
+    setVoiceGender(val);
+    localStorage.setItem('jarvis_voice_gender', val);
+  };
+
+  const goHome = () => {
+    router.push('/');
+  };
+
+  const handlePromptCardClick = (title) => {
+    setInput(title);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
+  };
+
+  const suggestedPrompts = [
+    { title: 'Help me think through a decision', subtitle: 'Decision support', icon: '🎯' },
+    { title: 'Explain something complex simply', subtitle: 'Learning', icon: '📚' },
+    { title: 'Review my writing', subtitle: 'Writing', icon: '✍️' },
+    { title: 'Help me debug this code', subtitle: 'Coding', icon: '💻' },
+    { title: 'Deep think on a problem', subtitle: 'Deep Think', icon: '🧠' },
+    { title: 'Generate creative ideas', subtitle: 'Creative', icon: '✨' },
+  ];
 
   return (
-    <>
-      <div className="app-shell">
-        <div className={`sidebar-backdrop ${mobileSidebarOpen || panelOpen ? 'visible' : ''}`} onClick={() => { setPanelOpen(false); setMobileSidebarOpen(false); }} />
-        <Sidebar
-          threads={threads}
-          activeThreadId={activeThreadId}
-          onSelectThread={(id) => { selectThread(id); setMobileSidebarOpen(false); }}
-          onNewThread={() => { createThread(); setMobileSidebarOpen(false); }}
-          onDeleteThread={deleteThread}
-          isDuplex={isDuplex}
-          onToggleDuplex={toggleDuplex}
-          isOpen={mobileSidebarOpen}
-          voiceGender={voiceGender}
-          onVoiceGenderChange={handleVoiceGenderChange}
-          onDuplexStateChange={handleDuplexStateChange}
-          userInfo={userInfo}
-          onTogglePanel={() => setPanelOpen(!panelOpen)}
-          onNavAction={handleNavAction}
-        />
-        <div className="main-area">
-          <TopNav
-            status={voiceState}
-            usage={usage}
-            onToggleSidebar={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-            onTogglePanel={() => setPanelOpen(!panelOpen)}
-            userInfo={userInfo}
-            streamingModel={streamingModel}
-            currentMode={mode}
-            onToggleModeSelector={() => setIsModeSelectorOpen(!isModeSelectorOpen)}
-          />
-          <div className="chat-area">
-            {messages.length === 0 && !streamingText && !isLoading ? (
-              <GreetingScreen userInfo={userInfo} currentMode={mode} onPromptSelect={sendMessage} />
-            ) : (
-              <ChatFeed messages={messages} mode={mode} streamingText={streamingText} streamingModel={streamingModel} isThinking={isLoading && !streamingText} />
-            )}
-            {modeSwitchWarning && (
-              <ModeSwitchBanner
-                fromMode={modeSwitchWarning.fromMode}
-                toMode={modeSwitchWarning.toMode}
-                onDismiss={() => setModeSwitchWarning(null)}
-                onNewThread={() => { setModeSwitchWarning(null); createThread(); }}
-              />
-            )}
-            <InputBar
-              onSend={sendMessage}
-              onFileSelect={handleFileSelect}
-              attachments={attachments}
-              onRemoveAttachment={(i) => setAttachments(prev => prev.filter((_, j) => j !== i))}
-              isDuplex={isDuplex}
-              isLoading={isLoading}
-              onPTTStart={handlePTTStart}
-              onPTTEnd={handlePTTEnd}
-              currentModelCapabilities={['text', 'image_input', 'pdf']}
-              onShowToast={showToast}
+    <div
+      style={{
+        minHeight: '100vh',
+        background: isDark ? '#060608' : '#fafafa',
+        color: isDark ? '#e4e4e7' : '#18181b',
+        display: 'flex',
+        fontFamily: 'var(--loaded-dm-sans), -apple-system, BlinkMacSystemFont, sans-serif',
+        overflow: 'hidden',
+        position: 'relative',
+        zIndex: 1,
+      }}
+    >
+      {/* ─── SIDEBAR ─── */}
+      <aside
+        style={{
+          position: isMobile ? 'fixed' : 'relative',
+          left: 0,
+          top: 0,
+          width: sidebarOpen ? '280px' : '0px',
+          height: '100vh',
+          background: isDark ? 'rgba(10,10,14,0.7)' : 'rgba(255,255,255,0.7)',
+          backdropFilter: 'blur(24px)',
+          borderRight: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+          zIndex: 100,
+          transition: 'width 0.3s cubic-bezier(0.16,1,0.3,1), transform 0.3s cubic-bezier(0.16,1,0.3,1)',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          transform: (isMobile && !sidebarOpen) ? 'translateX(-280px)' : 'translateX(0)',
+        }}
+      >
+        <div style={{ padding: '1.25rem 1rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {/* Brand - clickable to home */}
+          <div
+            onClick={goHome}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              cursor: 'pointer',
+              padding: '0.5rem',
+              borderRadius: '8px',
+              transition: 'background 0.2s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            <span style={{ fontSize: '1.4rem', fontWeight: 800, letterSpacing: '0.15em', fontFamily: 'var(--loaded-bebas), sans-serif', color: isDark ? '#fff' : '#000' }}>
+              JARVIS
+            </span>
+          </div>
+
+          <button
+            onClick={startNewChat}
+            style={{
+              width: '100%',
+              padding: '0.75rem 1rem',
+              borderRadius: '12px',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+              background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
+              color: 'inherit',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              fontSize: '0.9rem',
+              fontWeight: 500,
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)';
+            }}
+          >
+            <span style={{ fontSize: '1.1rem' }}>+</span> New Chat
+          </button>
+
+          {/* Nav Items */}
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+            {[
+              { icon: '🔍', label: 'Search', route: '/' },
+              { icon: '💬', label: 'Chats', route: '/chat' },
+              { icon: '📁', label: 'Projects', route: '/projects' },
+              { icon: '⭐', label: 'Imagine', route: '/imagine' },
+              { icon: '📦', label: 'Artifacts', route: '/artifacts' },
+            ].map(item => (
+              <div
+                key={item.label}
+                onClick={() => router.push(item.route)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  padding: '0.6rem 0.75rem',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  fontSize: '0.92rem',
+                  color: isDark ? '#a1a1aa' : '#52525b',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)';
+                  e.currentTarget.style.color = isDark ? '#ffffff' : '#000000';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = isDark ? '#a1a1aa' : '#52525b';
+                }}
+              >
+                <span style={{ fontSize: '1.1rem' }}>{item.icon}</span>
+                {item.label}
+              </div>
+            ))}
+          </nav>
+
+          {/* Recent Conversations */}
+          {conversations.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '1rem' }}>
+              <div style={{
+                fontSize: '0.75rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.12em',
+                color: isDark ? '#52525b' : '#a1a1aa',
+                paddingLeft: '0.75rem',
+                fontWeight: 600,
+              }}>
+                Recent Chats
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', maxHeight: '200px', overflowY: 'auto' }}>
+                {conversations.map(conv => (
+                  <div
+                    key={conv.id}
+                    onClick={() => handleRecentSelect(conv)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.6rem',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      color: isDark ? '#a1a1aa' : '#52525b',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)';
+                      e.currentTarget.style.color = isDark ? '#ffffff' : '#000000';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = isDark ? '#a1a1aa' : '#52525b';
+                    }}
+                  >
+                    <span style={{ color: '#3b82f6', fontSize: '0.5rem', flexShrink: 0 }}>●</span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{conv.title}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Actions */}
+        <div style={{
+          padding: '0.85rem 1rem',
+          borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+          display: 'flex',
+          gap: '0.5rem',
+        }}>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            style={{
+              flex: 1,
+              padding: '0.6rem',
+              borderRadius: '10px',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+              background: 'transparent',
+              color: 'inherit',
+              cursor: 'pointer',
+              fontSize: '0.82rem',
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.35rem',
+            }}
+          >
+            ⚙️ Settings
+          </button>
+          <button
+            onClick={() => setVoiceEnabled(!voiceEnabled)}
+            style={{
+              flex: 1,
+              padding: '0.6rem',
+              borderRadius: '10px',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+              background: voiceEnabled ? 'rgba(59,130,246,0.15)' : 'transparent',
+              color: voiceEnabled ? '#60a5fa' : 'inherit',
+              cursor: 'pointer',
+              fontSize: '0.82rem',
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.35rem',
+            }}
+          >
+            🎙️ Voice {voiceEnabled ? 'On' : 'Off'}
+          </button>
+        </div>
+      </aside>
+
+      {/* ─── MAIN CONTENT ─── */}
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', height: '100vh', overflow: 'hidden' }}>
+        {/* Header */}
+        <header style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0.85rem 1.25rem',
+          borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+          background: isDark ? 'rgba(6,6,8,0.4)' : 'rgba(250,250,250,0.4)',
+          backdropFilter: 'blur(20px)',
+          zIndex: 10,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'inherit',
+                fontSize: '1.25rem',
+                cursor: 'pointer',
+                padding: '0.25rem',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              ☰
+            </button>
+            <span style={{
+              fontSize: '0.68rem',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.12em',
+              padding: '0.3rem 0.65rem',
+              borderRadius: '6px',
+              background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+              color: isDark ? '#a1a1aa' : '#71717a',
+              fontFamily: 'var(--loaded-dm-mono), monospace',
+            }}>
+              {selectedModelData?.category === 'coding' ? '💻 Code' :
+               selectedModelData?.category === 'reasoning' ? '🧠 Deep Think' :
+               selectedModelData?.category === 'creative' ? '✨ Creative' : '💬 General'}
+            </span>
+            <span style={{ fontSize: '0.85rem', opacity: 0.6, fontWeight: 500 }}>
+              {selectedModelData?.name}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+            <span style={{ fontSize: '0.78rem', opacity: 0.5, fontFamily: 'var(--loaded-dm-mono), monospace' }}>
+              {messages.filter(m => m.role === 'user').length} / 50
+            </span>
+            <button
+              onClick={() => setSettingsOpen(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'inherit',
+                fontSize: '1.15rem',
+                cursor: 'pointer',
+                opacity: 0.7,
+                transition: 'opacity 0.2s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}
+            >
+              ⚙️
+            </button>
+          </div>
+        </header>
+
+        {/* Chat Area */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+          {messages.length === 0 ? (
+            /* Empty Greeting State */
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '75vh',
+              textAlign: 'center',
+              gap: '1.25rem',
+            }}>
+              <h1 style={{
+                fontSize: 'clamp(2.5rem, 8vw, 4.5rem)',
+                fontWeight: 800,
+                letterSpacing: '0.25em',
+                margin: 0,
+                background: 'linear-gradient(135deg, #60a5fa, #c084fc, #f472b6)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                fontFamily: 'var(--loaded-bebas), sans-serif',
+              }}>
+                JARVIS
+              </h1>
+              <h2 style={{
+                fontSize: 'clamp(1.15rem, 3.5vw, 1.6rem)',
+                fontWeight: 700,
+                margin: 0,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+              }}>
+                Good Evening, {userInfo?.name || 'Guest'}.
+              </h2>
+              <p style={{ opacity: 0.5, margin: 0, fontSize: '0.92rem' }}>
+                Sign in to save your conversations and access premium limits.
+              </p>
+
+              {/* Suggested Prompts Grid */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gap: '0.85rem',
+                width: '100%',
+                maxWidth: '740px',
+                padding: '1.5rem 1rem 0 1rem',
+              }}>
+                {suggestedPrompts.map(prompt => (
+                  <button
+                    key={prompt.title}
+                    onClick={() => handlePromptCardClick(prompt.title)}
+                    style={{
+                      textAlign: 'left',
+                      padding: '1.15rem',
+                      borderRadius: '16px',
+                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                      background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+                      color: 'inherit',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s cubic-bezier(0.16,1,0.3,1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.85rem',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.borderColor = '#3b82f6';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+                    }}
+                  >
+                    <span style={{ fontSize: '1.4rem' }}>{prompt.icon}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.92rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {prompt.title}
+                      </div>
+                      <div style={{ fontSize: '0.78rem', opacity: 0.45, marginTop: '0.15rem' }}>
+                        {prompt.subtitle}
+                      </div>
+                    </div>
+                    <span style={{ opacity: 0.3, fontSize: '1.1rem' }}>→</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            /* Message Feed */
+            <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {messages.map(msg => (
+                <div
+                  key={msg.id}
+                  style={{
+                    alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                    maxWidth: '85%',
+                    padding: '1rem 1.25rem',
+                    borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                    background: msg.role === 'user'
+                      ? 'linear-gradient(135deg, #2563eb, #7c3aed)'
+                      : isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.035)',
+                    color: msg.role === 'user' ? '#fff' : 'inherit',
+                    fontSize: '0.96rem',
+                    lineHeight: 1.6,
+                    wordBreak: 'break-word',
+                    border: msg.role === 'user' ? 'none' : `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
+                  }}
+                >
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+                  {msg.model && (
+                    <div style={{
+                      fontSize: '0.72rem',
+                      opacity: msg.role === 'user' ? 0.8 : 0.4,
+                      marginTop: '0.6rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      fontFamily: 'var(--loaded-dm-mono), monospace',
+                    }}>
+                      <span>🤖</span> {msg.model}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {isLoading && (
+                <div style={{
+                  alignSelf: 'flex-start',
+                  padding: '1rem 1.35rem',
+                  borderRadius: '18px 18px 18px 4px',
+                  background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.035)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
+                }}>
+                  <div className="dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', animation: 'dot-pulse 1.2s infinite ease-in-out', animationDelay: '0s' }} />
+                  <div className="dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', animation: 'dot-pulse 1.2s infinite ease-in-out', animationDelay: '0.2s' }} />
+                  <div className="dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', animation: 'dot-pulse 1.2s infinite ease-in-out', animationDelay: '0.4s' }} />
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
+
+        {/* Input Bar Wrapper */}
+        <div style={{
+          padding: '1.25rem 1.5rem',
+          borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+          background: isDark ? 'rgba(6,6,8,0.5)' : 'rgba(250,250,250,0.5)',
+          backdropFilter: 'blur(20px)',
+        }}>
+          <div style={{
+            maxWidth: '800px',
+            margin: '0 auto',
+            display: 'flex',
+            alignItems: 'flex-end',
+            gap: '0.85rem',
+            padding: '0.6rem 0.85rem',
+            borderRadius: '16px',
+            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+            background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+          }}>
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Or just start typing below..."
+              rows={1}
+              style={{
+                flex: 1,
+                background: 'none',
+                border: 'none',
+                color: 'inherit',
+                fontSize: '0.96rem',
+                resize: 'none',
+                outline: 'none',
+                padding: '0.5rem 0.25rem',
+                maxHeight: '130px',
+                fontFamily: 'inherit',
+                lineHeight: 1.5,
+              }}
             />
+            <button
+              onClick={handleSend}
+              disabled={!input.trim() || isLoading}
+              style={{
+                padding: '0.65rem 1.25rem',
+                borderRadius: '12px',
+                border: 'none',
+                background: input.trim() && !isLoading
+                  ? 'linear-gradient(135deg, #2563eb, #7c3aed)'
+                  : isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+                color: input.trim() && !isLoading ? '#ffffff' : isDark ? '#71717a' : '#a1a1aa',
+                cursor: input.trim() && !isLoading ? 'pointer' : 'not-allowed',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                transition: 'all 0.2s',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {isLoading ? 'Sending...' : 'Send'}
+            </button>
+          </div>
+          <div style={{
+            textAlign: 'center',
+            fontSize: '0.72rem',
+            opacity: 0.35,
+            marginTop: '0.5rem',
+          }}>
+            Press Enter to send, Shift+Enter for new line
           </div>
         </div>
-        <aside className="right-panel">
-          {isDuplex && <VoiceOrb state={voiceState} isDuplex={isDuplex} />}
-          <ActiveModelPanel activeModel={activeModelDisplay} activeProvider={activeProviderDisplay} />
-        </aside>
-      </div>
-      {isModeSelectorOpen && (
-        <ModeSelector
-          currentMode={mode}
-          onSelect={(m) => {
-            if (messages.length > 0 && m !== mode) {
-              setModeSwitchWarning({ fromMode: mode, toMode: m });
-            }
-            setMode(m);
-            if (activeThreadId) {
-              setThreads(prev => prev.map(t => t.id === activeThreadId ? { ...t, mode: m } : t));
-            }
+      </main>
+
+      {/* ─── SETTINGS MODAL ─── */}
+      {settingsOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(12px)',
+            zIndex: 200,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
           }}
-          onClose={() => setIsModeSelectorOpen(false)}
-        />
+          onClick={() => setSettingsOpen(false)}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '500px',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+              background: isDark ? '#0d0d12' : '#ffffff',
+              borderRadius: '24px',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+              padding: '1.75rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.5rem',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}>
+              <h2 style={{
+                fontSize: '1.4rem',
+                fontWeight: 800,
+                letterSpacing: '0.05em',
+                textTransform: 'uppercase',
+                fontFamily: 'var(--loaded-bebas), sans-serif',
+              }}>
+                JARVIS Settings
+              </h2>
+              <button
+                onClick={() => setSettingsOpen(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'inherit',
+                  fontSize: '1.4rem',
+                  cursor: 'pointer',
+                  opacity: 0.5,
+                  padding: '0.25rem',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* API Key */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{
+                fontSize: '0.72rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.12em',
+                color: isDark ? '#71717a' : '#a1a1aa',
+                fontWeight: 600,
+              }}>
+                OpenRouter API Key
+              </label>
+              <div style={{
+                display: 'flex',
+                gap: '0.5rem',
+                padding: '0.75rem 1rem',
+                borderRadius: '12px',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+                background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+              }}>
+                <input
+                  type={showApiKey ? 'text' : 'password'}
+                  value={apiKey}
+                  onChange={e => handleApiKeySave(e.target.value)}
+                  placeholder="sk-or-v1-..."
+                  style={{
+                    flex: 1,
+                    background: 'none',
+                    border: 'none',
+                    color: 'inherit',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                    fontFamily: 'monospace',
+                  }}
+                />
+                <button
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'inherit',
+                    cursor: 'pointer',
+                    opacity: 0.5,
+                    fontSize: '0.9rem',
+                  }}
+                >
+                  {showApiKey ? '🙈' : '👁️'}
+                </button>
+              </div>
+              <p style={{ fontSize: '0.75rem', opacity: 0.45, margin: 0 }}>
+                Your key is stored securely in your browser. Free models work out-of-the-box.
+              </p>
+            </div>
+
+            {/* Model Selector */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              <label style={{
+                fontSize: '0.72rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.12em',
+                color: isDark ? '#71717a' : '#a1a1aa',
+                fontWeight: 600,
+              }}>
+                AI Model Selector
+              </label>
+
+              {/* Category Tabs */}
+              <div style={{
+                display: 'flex',
+                gap: '0.35rem',
+                flexWrap: 'wrap',
+              }}>
+                {CATEGORIES.map(cat => (
+                  <button
+                    key={cat.key}
+                    onClick={() => setActiveCategory(cat.key)}
+                    style={{
+                      padding: '0.4rem 0.8rem',
+                      borderRadius: '20px',
+                      border: 'none',
+                      background: activeCategory === cat.key
+                        ? 'linear-gradient(135deg, #2563eb, #7c3aed)'
+                        : isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                      color: activeCategory === cat.key ? '#fff' : 'inherit',
+                      cursor: 'pointer',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Model List Container */}
+              <div style={{
+                maxHeight: '260px',
+                overflowY: 'auto',
+                borderRadius: '14px',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                background: isDark ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
+              }}>
+                {filteredModels.map(model => (
+                  <div
+                    key={model.id}
+                    onClick={() => {
+                      setSelectedModel(model.id);
+                    }}
+                    style={{
+                      padding: '0.85rem 1rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
+                      background: selectedModel === model.id
+                        ? isDark ? 'rgba(59,130,246,0.1)' : 'rgba(59,130,246,0.06)'
+                        : 'transparent',
+                      transition: 'background 0.2s',
+                    }}
+                    onMouseEnter={e => {
+                      if (selectedModel !== model.id) {
+                        e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)';
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (selectedModel !== model.id) {
+                        e.currentTarget.style.background = 'transparent';
+                      }
+                    }}
+                  >
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: model.free ? '#10b981' : '#f59e0b',
+                      flexShrink: 0,
+                    }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: '0.88rem',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                      }}>
+                        {model.name}
+                        {model.category === 'reasoning' && (
+                          <span style={{
+                            fontSize: '0.62rem',
+                            fontWeight: 700,
+                            padding: '0.1rem 0.35rem',
+                            borderRadius: '4px',
+                            background: 'linear-gradient(135deg, #7c3aed, #c084fc)',
+                            color: '#fff',
+                            fontFamily: 'var(--loaded-dm-mono), monospace',
+                          }}>
+                            THINK
+                          </span>
+                        )}
+                        {model.category === 'coding' && (
+                          <span style={{
+                            fontSize: '0.62rem',
+                            fontWeight: 700,
+                            padding: '0.1rem 0.35rem',
+                            borderRadius: '4px',
+                            background: 'linear-gradient(135deg, #2563eb, #06b6d4)',
+                            color: '#fff',
+                            fontFamily: 'var(--loaded-dm-mono), monospace',
+                          }}>
+                            CODE
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.74rem', opacity: 0.45, marginTop: '0.15rem' }}>
+                        {model.provider} · {model.description}
+                      </div>
+                    </div>
+                    {selectedModel === model.id && (
+                      <span style={{ color: '#2563eb', fontSize: '1rem', fontWeight: 'bold' }}>✓</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Voice Settings */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{
+                fontSize: '0.72rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.12em',
+                color: isDark ? '#71717a' : '#a1a1aa',
+                fontWeight: 600,
+              }}>
+                Voice Settings
+              </label>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.75rem 1rem',
+                borderRadius: '12px',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+                background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+              }}>
+                <span style={{ fontSize: '0.88rem', fontWeight: 500 }}>Assistant Voice</span>
+                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                  {['male', 'female'].map(gender => (
+                    <button
+                      key={gender}
+                      onClick={() => handleVoiceGenderChange(gender)}
+                      style={{
+                        padding: '0.35rem 0.85rem',
+                        borderRadius: '20px',
+                        border: `1px solid ${voiceGender === gender ? '#2563eb' : isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
+                        background: voiceGender === gender ? 'rgba(37,99,235,0.12)' : 'transparent',
+                        color: voiceGender === gender ? '#60a5fa' : 'inherit',
+                        cursor: 'pointer',
+                        fontSize: '0.8rem',
+                        textTransform: 'capitalize',
+                        fontWeight: 500,
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      {gender}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Appearance */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{
+                fontSize: '0.72rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.12em',
+                color: isDark ? '#71717a' : '#a1a1aa',
+                fontWeight: 600,
+              }}>
+                Appearance
+              </label>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.75rem 1rem',
+                borderRadius: '12px',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+                background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+              }}>
+                <span style={{ fontSize: '0.88rem', fontWeight: 500 }}>Visual Theme</span>
+                <button
+                  onClick={handleThemeChange}
+                  style={{
+                    width: '44px',
+                    height: '24px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    background: isDark ? '#2563eb' : '#e4e4e7',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    transition: 'background 0.3s',
+                  }}
+                >
+                  <div style={{
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '50%',
+                    background: '#fff',
+                    position: 'absolute',
+                    top: '2px',
+                    left: isDark ? '22px' : '2px',
+                    transition: 'left 0.3s cubic-bezier(0.16,1,0.3,1)',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                  }} />
+                </button>
+              </div>
+            </div>
+
+            {/* Account Info */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{
+                fontSize: '0.72rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.12em',
+                color: isDark ? '#71717a' : '#a1a1aa',
+                fontWeight: 600,
+              }}>
+                Account Tier
+              </label>
+              <div style={{
+                padding: '1rem',
+                borderRadius: '12px',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+                background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.5rem',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.86rem', opacity: 0.6 }}>Current User</span>
+                  <span style={{ fontSize: '0.86rem', fontWeight: 600 }}>{userInfo?.name || 'Guest'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.86rem', opacity: 0.6 }}>Tier Status</span>
+                  <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase' }}>
+                    {userInfo?.role || 'GUEST TIER'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.86rem', opacity: 0.6 }}>Usage Limit</span>
+                  <span style={{ fontSize: '0.86rem', fontFamily: 'var(--loaded-dm-mono), monospace' }}>
+                    {messages.filter(m => m.role === 'user').length} / 50 messages used
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
-      <div className={`toast ${toastMsg ? 'show' : ''}`}>{toastMsg}</div>
-      {searchOpen && (
-        <SearchModal
-          onClose={() => setSearchOpen(false)}
-          onSelectThread={(id) => { selectThread(id); setMobileSidebarOpen(false); }}
-        />
-      )}
-      <SettingsModal
-        isOpen={panelOpen}
-        onClose={() => setPanelOpen(false)}
-        voiceGender={voiceGender}
-        onVoiceGenderChange={handleVoiceGenderChange}
-        usage={usage}
-        userInfo={userInfo}
-      />
-    </>
+
+      {/* Global CSS Inject */}
+      <style jsx global>{`
+        @keyframes dot-pulse {
+          0%, 100% { transform: scale(0.6); opacity: 0.3; }
+          50% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
+    </div>
   );
-}
-
-// Helper: Float32 PCM to WAV Blob
-function float32ToWav(float32, sampleRate = 16000) {
-  const length = float32.length;
-  const buffer = new ArrayBuffer(44 + length * 2);
-  const view = new DataView(buffer);
-
-  function writeString(offset, str) {
-    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
-  }
-
-  writeString(0, 'RIFF');
-  view.setUint32(4, 36 + length * 2, true);
-  writeString(8, 'WAVE');
-  writeString(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeString(36, 'data');
-  view.setUint32(40, length * 2, true);
-
-  for (let i = 0; i < length; i++) {
-    const s = Math.max(-1, Math.min(1, float32[i]));
-    view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-  }
-
-  return new Blob([buffer], { type: 'audio/wav' });
 }
