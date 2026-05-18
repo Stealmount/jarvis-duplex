@@ -12,6 +12,8 @@ import VoiceOrb from '@/components/VoiceOrb';
 import { splitIntoSentences, getPauseAfterSentence, getThinkingPause } from '@/lib/tts-pacing';
 import { stopDuplex } from '@/lib/duplex';
 import { getLocalThreads, setLocalThreads, saveMessageToLocal, deleteLocalThread, setLocalCurrentThreadId } from '@/lib/storage';
+import { buildContextWindow } from '@/lib/context';
+import { initElevenLabsDuplex, getElevenLabsInstance, destroyElevenLabsDuplex } from '@/lib/elevenlabs-duplex';
 
 const Cursor = dynamic(() => import('@/components/Cursor'), { ssr: false });
 
@@ -232,16 +234,32 @@ export default function ChatPage() {
 
   const selectThread = useCallback(async (id) => {
     setActiveThreadId(id);
+    setLocalCurrentThreadId(id);
     const thread = threads.find(t => t.id === id);
     if (thread?.mode) setMode(thread.mode);
     setStreamingText('');
-    // Load messages from DB
+
+    // 1. Load from localStorage instantly (zero flash)
+    const localData = getLocalThreads();
+    if (localData[id]?.messages?.length > 0) {
+      setMessages(localData[id].messages.map((m, i) => ({ id: m.id || `local-${i}`, ...m })));
+    } else {
+      setMessages([]);
+    }
+
+    // 2. Backfill from DB in background
     try {
       const res = await fetch(`/api/messages?threadId=${id}`);
       const data = await res.json();
-      if (Array.isArray(data)) setMessages(data);
-      else setMessages([]);
-    } catch { setMessages([]); }
+      if (Array.isArray(data) && data.length > 0) {
+        setMessages(data);
+        // Update localStorage cache
+        const updated = getLocalThreads();
+        if (!updated[id]) updated[id] = { messages: [], meta: {} };
+        updated[id].messages = data.slice(-100);
+        setLocalThreads(updated);
+      }
+    } catch {}
   }, [threads]);
 
   // ── SSE Stream Parser ──
@@ -304,6 +322,17 @@ export default function ChatPage() {
 
   const speakSentence = useCallback((text) => {
     return new Promise(resolve => {
+      // Try ElevenLabs duplex first (if available)
+      const elInstance = getElevenLabsInstance();
+      if (elInstance) {
+        try {
+          elInstance.sendText(text);
+          resolve(); // ElevenLabs handles playback asynchronously
+          return;
+        } catch { /* fall through to browser TTS */ }
+      }
+
+      // Fallback: browser SpeechSynthesis
       if (typeof window === 'undefined' || !window.speechSynthesis) { resolve(); return; }
       const utt = new SpeechSynthesisUtterance(text);
       utt.rate = 1.05;
@@ -343,11 +372,15 @@ export default function ChatPage() {
     // Cache user message in localStorage
     saveMessageToLocal(threadId, { role: 'user', content, created_at: userMsg.created_at });
 
-    // Build messages array for API
-    const apiMessages = [...messages, { role: 'user', content }].map(m => ({
+    // Build messages array for API with context window compression
+    const allMsgs = [...messages, { role: 'user', content }].map(m => ({
       role: m.role,
       content: m.content,
     }));
+    // Apply rolling context window — last 20 verbatim, older messages summarized
+    const localData = getLocalThreads();
+    const threadSummary = localData[threadId]?.meta?.summary || null;
+    const apiMessages = buildContextWindow(allMsgs, threadSummary);
 
     // Auto-title thread from first message
     if (messages.length === 0) {
@@ -577,6 +610,7 @@ export default function ChatPage() {
     if (isDuplex) {
       // Turn off
       stopDuplex();
+      destroyElevenLabsDuplex();
       if (vadRef.current) { vadRef.current.destroy(); vadRef.current = null; }
       speechSynthesis?.cancel();
       setIsDuplex(false);
@@ -584,12 +618,30 @@ export default function ChatPage() {
       return;
     }
 
-    // Turn on — uses the new lib/duplex.js init
-    // The actual VAD init is now handled inside DuplexToggle component
-    // which calls initDuplex from lib/duplex.js
+    // Turn on — try ElevenLabs duplex first, fallback to browser TTS
     setIsDuplex(true);
     setVoiceState('listening');
-  }, [isDuplex]);
+
+    // Attempt ElevenLabs WebSocket connection (async, non-blocking)
+    try {
+      const tokenRes = await fetch('/api/tts/token');
+      if (tokenRes.ok) {
+        const { key, voices } = await tokenRes.json();
+        if (key) {
+          const voiceId = voiceGender === 'male' ? voices?.male : voices?.female;
+          const el = await initElevenLabsDuplex(key, voiceGender);
+          if (el) {
+            console.log('[JARVIS] ElevenLabs duplex connected');
+            el.onEnd = () => {
+              if (!isAssistantSpeakingRef.current) setVoiceState('listening');
+            };
+          }
+        }
+      }
+    } catch (e) {
+      console.log('[JARVIS] ElevenLabs unavailable, using browser TTS:', e.message);
+    }
+  }, [isDuplex, voiceGender]);
 
   // Duplex state change handler (from DuplexToggle)
   const handleDuplexStateChange = useCallback((state, data) => {
@@ -642,11 +694,12 @@ export default function ChatPage() {
     }
   }, [sendMessage]);
 
-  // Cleanup VAD on unmount
+  // Cleanup VAD + ElevenLabs on unmount
   useEffect(() => {
     return () => {
       if (vadRef.current) vadRef.current.destroy();
       stopDuplex();
+      destroyElevenLabsDuplex();
     };
   }, []);
 
