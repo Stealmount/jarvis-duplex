@@ -1,4 +1,4 @@
-# JARVIS — Your Personal Indian Voice AI
+# JARVIS — Your Personal Indian Voice AI 
 
 Full-duplex voice AI companion. Hinglish. Therapy. Deep reasoning. Study mode.
 Runs on your machine. All API keys stay private on your server.
