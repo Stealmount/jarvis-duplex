@@ -54,8 +54,8 @@ docker compose up -d --build
 
 ```bash
 cp .env.example .env   # fill in your keys
-cd server && npm install && cd ..
-node server/index.js
+npm install
+npm run dev
 # open http://localhost:3000
 ```
 

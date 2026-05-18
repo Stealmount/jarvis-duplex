@@ -72,9 +72,9 @@ else
   fi
   echo "✅  Node.js: $(node -v)"
   echo "📦  Installing dependencies..."
-  cd server && npm install --silent && cd ..
+  npm install --silent
   echo ""
   echo "🚀  Starting JARVIS at http://localhost:3000"
   echo "🛑  Press Ctrl+C to stop"
-  node server/index.js
+  npm run dev
 fi

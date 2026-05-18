@@ -126,14 +126,12 @@ if ($useDocker) {
     Write-Host "[OK] Node.js: $(node -v)" -ForegroundColor Green
 
     Write-Host "Installing dependencies..." -ForegroundColor Yellow
-    Push-Location server
     npm install --silent 2>$null
-    Pop-Location
 
     Write-Host ""
-    Write-Host "Starting JARVIS server..." -ForegroundColor Cyan
+    Write-Host "Starting JARVIS companion (Next.js)..." -ForegroundColor Cyan
     Write-Host "Open http://localhost:3000 in Chrome" -ForegroundColor Green
     Write-Host "Press Ctrl+C to stop" -ForegroundColor White
     Write-Host ""
-    node server/index.js
+    npm run dev
 }

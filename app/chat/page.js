@@ -7,77 +7,19 @@ import Sidebar from '@/components/Sidebar';
 import ChatFeed from '@/components/ChatFeed';
 import InputBar from '@/components/InputBar';
 import ModeSelector from '@/components/ModeSelector';
-import ModelPicker from '@/components/ModelPicker';
 import VoiceOrb from '@/components/VoiceOrb';
 import GreetingScreen from '@/components/GreetingScreen';
+import ModeSwitchBanner from '@/components/ModeSwitchBanner';
+import ActiveModelPanel from '@/components/ActiveModelPanel';
 import { splitIntoSentences, getPauseAfterSentence, getThinkingPause } from '@/lib/tts-pacing';
+import { getThinkingDelay, TOKEN_DISPLAY_DELAY_MS } from '@/lib/pacing';
 import { stopDuplex } from '@/lib/duplex';
 import { getLocalThreads, setLocalThreads, saveMessageToLocal, deleteLocalThread, setLocalCurrentThreadId } from '@/lib/storage';
 import { buildContextWindow } from '@/lib/context';
 import { initElevenLabsDuplex, getElevenLabsInstance, destroyElevenLabsDuplex } from '@/lib/elevenlabs-duplex';
+import { getGuestUsage, incrementGuestMessage, isGuestLimitReached } from '@/lib/guest';
 
-// Full model catalog — synced with lib/providers/router.js
-const ALL_MODELS = [
-  // Cerebras
-  { id:'llama3.1-70b',label:'Llama 3.1 70B',provider:'cerebras',speed:'fast',tier:'free',specialty:'General · Ultra-fast',bestFor:['general','therapy'],capabilities:['text'],description:'World\'s fastest free LLM inference.'},
-  { id:'llama3.1-8b',label:'Llama 3.1 8B',provider:'cerebras',speed:'fast',tier:'free',specialty:'General · Lightning fast',bestFor:['general'],capabilities:['text'],description:'Extremely fast responses.'},
-  // SambaNova
-  { id:'Meta-Llama-3.1-405B-Instruct',label:'Llama 3.1 405B',provider:'sambanova',speed:'medium',tier:'free',specialty:'Reasoning · Deep analysis',bestFor:['deep','study'],capabilities:['text'],description:'Largest open model.'},
-  { id:'Meta-Llama-3.1-70B-Instruct',label:'Llama 3.1 70B (SN)',provider:'sambanova',speed:'fast',tier:'free',specialty:'General · Balanced',bestFor:['general'],capabilities:['text'],description:'Strong general model.'},
-  // Groq
-  { id:'llama-3.1-8b-instant',label:'Llama 3.1 8B Instant',provider:'groq',speed:'fast',tier:'free',specialty:'General · Instant replies',bestFor:['general'],capabilities:['text'],description:'Ideal for voice.'},
-  { id:'llama-3.3-70b-versatile',label:'Llama 3.3 70B',provider:'groq',speed:'medium',tier:'free',specialty:'Study · Research',bestFor:['study','research'],capabilities:['text'],description:'Versatile and capable.'},
-  { id:'gemma2-9b-it',label:'Gemma 2 9B',provider:'groq',speed:'fast',tier:'free',specialty:'General · Concise',bestFor:['general'],capabilities:['text'],description:'Fast on Groq.'},
-  { id:'mixtral-8x7b-32768',label:'Mixtral 8x7B',provider:'groq',speed:'fast',tier:'free',specialty:'General · Long context',bestFor:['general'],capabilities:['text'],description:'MoE model.'},
-  // OpenRouter
-  { id:'deepseek/deepseek-r1:free',label:'DeepSeek R1',provider:'openrouter',speed:'medium',tier:'free',specialty:'Reasoning · Math · Code',bestFor:['deep','study'],capabilities:['text'],description:'Reasoning model.'},
-  { id:'deepseek/deepseek-v3:free',label:'DeepSeek V3',provider:'openrouter',speed:'fast',tier:'free',specialty:'Code · General',bestFor:['general','deep'],capabilities:['text'],description:'Coding excellence.'},
-  { id:'google/gemma-2-9b-it:free',label:'Gemma 2 9B (OR)',provider:'openrouter',speed:'fast',tier:'free',specialty:'General · Concise',bestFor:['general'],capabilities:['text'],description:'Google via OR.'},
-  { id:'mistralai/mistral-7b-instruct:free',label:'Mistral 7B',provider:'openrouter',speed:'fast',tier:'free',specialty:'General · Instruction following',bestFor:['general'],capabilities:['text'],description:'Reliable.'},
-  { id:'microsoft/phi-3-mini-128k-instruct:free',label:'Phi-3 Mini 128K',provider:'openrouter',speed:'fast',tier:'free',specialty:'Long context · Code',bestFor:['study'],capabilities:['text'],description:'128K context.'},
-  { id:'qwen/qwen-2.5-72b-instruct:free',label:'Qwen 2.5 72B',provider:'openrouter',speed:'medium',tier:'free',specialty:'Code · Multilingual',bestFor:['deep','study'],capabilities:['text'],description:'Code + multilingual.'},
-  // Kimi
-  { id:'moonshot-v1-8k',label:'Kimi 8K',provider:'kimi',speed:'fast',tier:'free',specialty:'General · Code',bestFor:['general'],capabilities:['text'],description:'Kimi model.'},
-  { id:'moonshot-v1-32k',label:'Kimi 32K',provider:'kimi',speed:'medium',tier:'free',specialty:'Long context · Code · Documents',bestFor:['study','research'],capabilities:['text'],description:'32K context.'},
-  { id:'moonshot-v1-128k',label:'Kimi 128K',provider:'kimi',speed:'medium',tier:'free',specialty:'Ultra-long context · Research',bestFor:['research'],capabilities:['text'],description:'128K context.'},
-  // MiniMax
-  { id:'abab6.5s-chat',label:'MiniMax 6.5s',provider:'minimax',speed:'fast',tier:'free',specialty:'Reasoning · Long context',bestFor:['deep','study'],capabilities:['text'],description:'Strong reasoning.'},
-  { id:'abab5.5-chat',label:'MiniMax 5.5',provider:'minimax',speed:'fast',tier:'free',specialty:'General · Fast',bestFor:['general'],capabilities:['text'],description:'Lighter model.'},
-  // Google
-  { id:'gemini-1.5-flash',label:'Gemini 1.5 Flash',provider:'google',speed:'fast',tier:'free',specialty:'General · Vision · Code',bestFor:['general','research'],capabilities:['text','image_input','pdf'],description:'Google fastest.'},
-  { id:'gemini-2.0-flash-exp',label:'Gemini 2.0 Flash',provider:'google',speed:'fast',tier:'free',specialty:'Research · Multimodal',bestFor:['research'],capabilities:['text','image_input','pdf'],description:'Latest flash.'},
-  // Mistral
-  { id:'mistral-small-latest',label:'Mistral Small',provider:'mistral',speed:'fast',tier:'free',specialty:'General · Efficient',bestFor:['general'],capabilities:['text'],description:'Production grade.'},
-  { id:'open-mistral-7b',label:'Mistral 7B',provider:'mistral',speed:'fast',tier:'free',specialty:'General · Open source',bestFor:['general'],capabilities:['text'],description:'Original Mistral.'},
-  { id:'codestral-latest',label:'Codestral',provider:'mistral',speed:'fast',tier:'free',specialty:'Code · 80+ languages',bestFor:['deep'],capabilities:['text'],description:'Dedicated coding.'},
-  // Cohere
-  { id:'command-r',label:'Command R',provider:'cohere',speed:'fast',tier:'free',specialty:'RAG · Research · Retrieval',bestFor:['general','study'],capabilities:['text'],description:'RAG optimized.'},
-  { id:'command-r-plus',label:'Command R+',provider:'cohere',speed:'medium',tier:'free',specialty:'Reasoning · Analysis',bestFor:['deep','study'],capabilities:['text'],description:'Most capable.'},
-  // Cloudflare
-  { id:'@cf/meta/llama-3.1-8b-instruct',label:'Llama 3.1 8B (CF)',provider:'cloudflare',speed:'fast',tier:'free',specialty:'General · Edge inference',bestFor:['general'],capabilities:['text'],description:'Edge network.'},
-  { id:'@cf/mistral/mistral-7b-instruct-v0.1',label:'Mistral 7B (CF)',provider:'cloudflare',speed:'fast',tier:'free',specialty:'General · Edge inference',bestFor:['general'],capabilities:['text'],description:'Edge Mistral.'},
-  // NVIDIA
-  { id:'meta/llama-3.1-405b-instruct',label:'Llama 3.1 405B (NIM)',provider:'nvidia',speed:'medium',tier:'free',specialty:'Deep reasoning · Complex tasks',bestFor:['deep','study'],capabilities:['text'],description:'405B on NVIDIA.'},
-  { id:'deepseek/deepseek-r1',label:'DeepSeek R1 (NIM)',provider:'nvidia',speed:'medium',tier:'free',specialty:'Math · Code · Reasoning',bestFor:['deep'],capabilities:['text'],description:'Chain-of-thought.'},
-  // HuggingFace
-  { id:'mistralai/Mistral-7B-Instruct-v0.3',label:'Mistral 7B (HF)',provider:'huggingface',speed:'slow',tier:'free',specialty:'General · Open source',bestFor:['general'],capabilities:['text'],description:'Always available.'},
-  { id:'google/gemma-7b-it',label:'Gemma 7B (HF)',provider:'huggingface',speed:'slow',tier:'free',specialty:'General',bestFor:['general'],capabilities:['text'],description:'Google Gemma on HF.'},
-  // Sarvam
-  { id:'sarvam-2b-v0.5',label:'Sarvam 2B',provider:'sarvam',speed:'fast',tier:'free',specialty:'Hindi · Hinglish · Indian languages',bestFor:['general'],capabilities:['text'],description:'India\'s own LLM.'},
-  // Together
-  { id:'meta-llama/Llama-3-8b-chat-hf',label:'Llama 3 8B',provider:'together',speed:'fast',tier:'free',specialty:'General · Chat',bestFor:['general'],capabilities:['text'],description:'Llama 3 on Together.'},
-  // Fireworks
-  { id:'accounts/fireworks/models/llama-v3p1-8b-instruct',label:'Llama 3.1 8B (FW)',provider:'fireworks',speed:'fast',tier:'free',specialty:'General · Fast inference',bestFor:['general'],capabilities:['text'],description:'Optimized inference.'},
-  // OpenAI (paid)
-  { id:'gpt-4o-mini',label:'GPT-4o Mini',provider:'openai',speed:'fast',tier:'paid',specialty:'General · All-round',bestFor:['general'],capabilities:['text','image_input','pdf'],description:'Efficient paid model.'},
-  { id:'gpt-4o',label:'GPT-4o',provider:'openai',speed:'medium',tier:'paid',specialty:'Deep reasoning · Research',bestFor:['deep','research'],capabilities:['text','image_input','pdf','audio_input'],description:'Most capable OpenAI.'},
-  // xAI / Grok
-  { id:'grok-3-mini-fast',label:'Grok 3 Mini Fast',provider:'xai',speed:'fast',tier:'paid',specialty:'General · Fast reasoning',bestFor:['general'],capabilities:['text'],description:'xAI fastest Grok.'},
-  { id:'grok-3-mini',label:'Grok 3 Mini',provider:'xai',speed:'fast',tier:'paid',specialty:'Reasoning · Code',bestFor:['general','deep'],capabilities:['text'],description:'Strong reasoning and code.'},
-  { id:'grok-3',label:'Grok 3',provider:'xai',speed:'medium',tier:'paid',specialty:'Deep reasoning · Research',bestFor:['deep','research'],capabilities:['text','image_input'],description:'Most capable xAI model.'},
-  // AIML API
-  { id:'moonshot-v1-8k',label:'Kimi 8K (AIML)',provider:'aimlapi',speed:'fast',tier:'free',specialty:'General · Code',bestFor:['general'],capabilities:['text'],description:'Kimi via AIML gateway.'},
-];
+
 
 export default function ChatPage() {
   const router = useRouter();
@@ -91,8 +33,8 @@ export default function ChatPage() {
   const [activeThreadId, setActiveThreadId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [mode, setMode] = useState('general');
-  const [autoMode, setAutoMode] = useState(true);
-  const [selectedModelId, setSelectedModelId] = useState(null);
+  const [activeModelDisplay, setActiveModelDisplay] = useState(null);
+  const [activeProviderDisplay, setActiveProviderDisplay] = useState(null);
   const [availableProviders, setAvailableProviders] = useState(['cerebras','sambanova','groq','openrouter','google','mistral','cohere','nvidia','cloudflare','sarvam','huggingface','together','fireworks','kimi','minimax','deepseek','openai','xai','aimlapi']);
 
   // UI state
@@ -107,6 +49,8 @@ export default function ChatPage() {
   const [toastMsg, setToastMsg] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [isModeSelectorOpen, setIsModeSelectorOpen] = useState(false);
+  const [modeSwitchWarning, setModeSwitchWarning] = useState(null);
 
   // Check auth on mount
   useEffect(() => {
@@ -133,9 +77,14 @@ export default function ChatPage() {
 
   // Fetch usage on mount + dual-layer thread loading
   useEffect(() => {
-    fetch('/api/usage').then(r => r.json()).then(d => {
-      if (d.count !== undefined) setUsage({ count: d.count, limit: d.limit });
-    }).catch(() => {});
+    if (userInfo?.role === 'guest') {
+      const gUsage = getGuestUsage();
+      if (gUsage) setUsage({ count: gUsage.messages, limit: gUsage.msgLimit });
+    } else {
+      fetch('/api/usage').then(r => r.json()).then(d => {
+        if (d.count !== undefined) setUsage({ count: d.count, limit: d.limit });
+      }).catch(() => {});
+    }
 
     // 1. Load from localStorage immediately (zero flash)
     const localData = getLocalThreads();
@@ -204,6 +153,7 @@ export default function ChatPage() {
         const local = getLocalThreads();
         local[newThread.id] = { messages: [], meta: newThread, synced: true };
         setLocalThreads(local);
+        setModeSwitchWarning(null);
         return newThread.id;
       }
     } catch (e) { console.error('Create thread failed:', e); }
@@ -221,6 +171,7 @@ export default function ChatPage() {
     const local = getLocalThreads();
     local[fallbackId] = { messages: [], meta: fallback, synced: false };
     setLocalThreads(local);
+    setModeSwitchWarning(null);
     return fallbackId;
   }, [mode]);
 
@@ -237,6 +188,7 @@ export default function ChatPage() {
     const thread = threads.find(t => t.id === id);
     if (thread?.mode) setMode(thread.mode);
     setStreamingText('');
+    setModeSwitchWarning(null);
 
     // 1. Load from localStorage instantly (zero flash)
     const localData = getLocalThreads();
@@ -283,7 +235,10 @@ export default function ChatPage() {
           try {
             const parsed = JSON.parse(payload);
             const token = parsed.choices?.[0]?.delta?.content || '';
-            if (token) onToken(token);
+            if (token) {
+              onToken(token);
+              await new Promise(r => setTimeout(r, TOKEN_DISPLAY_DELAY_MS));
+            }
           } catch {}
         }
       }
@@ -347,10 +302,17 @@ export default function ChatPage() {
   // ── Send Message ──
   const sendMessage = useCallback(async (content) => {
     if (!content.trim() && attachments.length === 0) return;
-    // Developer mode bypasses all limits
-    if (!isDeveloper && usage.count >= usage.limit) {
-      showToast(`⚡ Daily limit reached (${usage.limit}/${usage.limit}). Resets at midnight!`);
-      return;
+    // Limit Check
+    if (!isDeveloper) {
+      if (userInfo?.role === 'guest') {
+        if (isGuestLimitReached('message')) {
+          showToast(`⚡ Guest limit reached (50/50). Please create an account!`);
+          return;
+        }
+      } else if (usage.count >= usage.limit) {
+        showToast(`⚡ Daily limit reached (${usage.limit}/${usage.limit}). Resets at midnight!`);
+        return;
+      }
     }
 
     let threadId = activeThreadId;
@@ -368,6 +330,7 @@ export default function ChatPage() {
     setAttachments([]);
     setIsLoading(true);
     setVoiceState('thinking');
+    setModeSwitchWarning(null); // Clear warning on send
     // Cache user message in localStorage
     saveMessageToLocal(threadId, { role: 'user', content, created_at: userMsg.created_at });
 
@@ -411,7 +374,6 @@ export default function ChatPage() {
         body: JSON.stringify({
           messages: apiMessages,
           mode,
-          modelId: autoMode ? null : selectedModelId,
           threadId,
           ragContext: searchContext || null,
         }),
@@ -442,6 +404,10 @@ export default function ChatPage() {
 
       let fullText = '';
       let sentenceBuffer = '';
+
+      // Artificial thinking delay (makes AI feel deliberate)
+      const thinkingDelay = getThinkingDelay(mode, content);
+      await new Promise(r => setTimeout(r, thinkingDelay));
 
       await parseSSEStream(
         res,
@@ -483,6 +449,7 @@ export default function ChatPage() {
           lastSentenceEndRef.current = 0;
           setVoiceState(isDuplex ? 'listening' : 'idle');
           setUsage(prev => ({ ...prev, count: prev.count + 1 }));
+          if (userInfo?.role === 'guest') incrementGuestMessage();
 
           // Cache assistant message in localStorage
           saveMessageToLocal(threadId, { role: 'assistant', content: fullText, model: modelUsed, provider: providerUsed, mode, created_at: assistantMsg.created_at });
@@ -503,7 +470,7 @@ export default function ChatPage() {
       setIsLoading(false);
       setVoiceState(isDuplex ? 'listening' : 'idle');
     }
-  }, [activeThreadId, messages, mode, autoMode, selectedModelId, ragContext, isDuplex, usage, attachments, createThread, showToast, parseSSEStream, speakSentence]);
+  }, [activeThreadId, messages, mode, ragContext, isDuplex, usage, attachments, createThread, showToast, parseSSEStream, speakSentence]);
 
   // ── File Handling ──
   const handleFileSelect = useCallback(async (file) => {
@@ -713,10 +680,8 @@ export default function ChatPage() {
 
   return (
     <>
-      <div className="app-layout">
-        {(sidebarOpen || panelOpen) && (
-          <div className={`drawer-overlay show`} onClick={() => { setSidebarOpen(false); setPanelOpen(false); setMobileSidebarOpen(false); }} />
-        )}
+      <div className="app-shell">
+        <div className={`sidebar-backdrop ${mobileSidebarOpen || panelOpen ? 'visible' : ''}`} onClick={() => { setPanelOpen(false); setMobileSidebarOpen(false); }} />
         <Sidebar
           threads={threads}
           activeThreadId={activeThreadId}
@@ -732,7 +697,7 @@ export default function ChatPage() {
           userInfo={userInfo}
           onTogglePanel={() => setPanelOpen(!panelOpen)}
         />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <div className="main-area">
           <TopNav
             status={voiceState}
             usage={usage}
@@ -740,12 +705,22 @@ export default function ChatPage() {
             onTogglePanel={() => setPanelOpen(!panelOpen)}
             userInfo={userInfo}
             streamingModel={streamingModel}
+            currentMode={mode}
+            onToggleModeSelector={() => setIsModeSelectorOpen(!isModeSelectorOpen)}
           />
           <div className="chat-area">
             {messages.length === 0 && !streamingText && !isLoading ? (
               <GreetingScreen userInfo={userInfo} currentMode={mode} onPromptSelect={sendMessage} />
             ) : (
               <ChatFeed messages={messages} mode={mode} streamingText={streamingText} streamingModel={streamingModel} isThinking={isLoading && !streamingText} />
+            )}
+            {modeSwitchWarning && (
+              <ModeSwitchBanner
+                fromMode={modeSwitchWarning.fromMode}
+                toMode={modeSwitchWarning.toMode}
+                onDismiss={() => setModeSwitchWarning(null)}
+                onNewThread={() => { setModeSwitchWarning(null); createThread(); }}
+              />
             )}
             <InputBar
               onSend={sendMessage}
@@ -756,27 +731,31 @@ export default function ChatPage() {
               isLoading={isLoading}
               onPTTStart={handlePTTStart}
               onPTTEnd={handlePTTEnd}
-              currentModelCapabilities={(() => {
-                const m = selectedModelId ? ALL_MODELS.find(m => m.id === selectedModelId) : null;
-                return m?.capabilities || ['text'];
-              })()}
+              currentModelCapabilities={['text', 'image_input', 'pdf']}
               onShowToast={showToast}
             />
           </div>
         </div>
-        <aside className={`right-panel ${panelOpen ? 'open' : ''}`}>
+        <aside className="right-panel">
           {isDuplex && <VoiceOrb state={voiceState} isDuplex={isDuplex} />}
-          <ModeSelector activeMode={mode} onSelectMode={(m) => { setMode(m); if (activeThreadId) setThreads(prev => prev.map(t => t.id === activeThreadId ? { ...t, mode: m } : t)); }} />
-          <ModelPicker
-            models={ALL_MODELS}
-            activeModelId={selectedModelId}
-            autoMode={autoMode}
-            onSelectModel={(id) => { setSelectedModelId(id); setAutoMode(false); }}
-            onToggleAuto={() => { setAutoMode(true); setSelectedModelId(null); }}
-            availableProviders={availableProviders}
-          />
+          <ActiveModelPanel activeModel={activeModelDisplay} activeProvider={activeProviderDisplay} />
         </aside>
       </div>
+      {isModeSelectorOpen && (
+        <ModeSelector
+          currentMode={mode}
+          onSelect={(m) => {
+            if (messages.length > 0 && m !== mode) {
+              setModeSwitchWarning({ fromMode: mode, toMode: m });
+            }
+            setMode(m);
+            if (activeThreadId) {
+              setThreads(prev => prev.map(t => t.id === activeThreadId ? { ...t, mode: m } : t));
+            }
+          }}
+          onClose={() => setIsModeSelectorOpen(false)}
+        />
+      )}
       <div className={`toast ${toastMsg ? 'show' : ''}`}>{toastMsg}</div>
     </>
   );

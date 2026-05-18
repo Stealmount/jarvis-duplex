@@ -1,34 +1,45 @@
 'use client';
-const MODES = [
-  { id: 'general', name: 'GENERAL', icon: '◎', desc: 'Everyday conversations', color: 'var(--mode-general)' },
-  { id: 'therapy', name: 'THERAPY', icon: '◌', desc: 'Empathetic listener', color: 'var(--mode-therapy)' },
-  { id: 'deep', name: 'DEEP THINK', icon: '◈', desc: 'Analytical reasoning', color: 'var(--mode-deep)' },
-  { id: 'study', name: 'STUDY', icon: '◇', desc: 'Socratic tutoring', color: 'var(--mode-study)' },
-  { id: 'research', name: 'RESEARCH', icon: '◆', desc: 'Web research & analysis', color: 'var(--mode-research)' },
-];
+import { MODES } from '@/lib/modes';
 
-export default function ModeSelector({ activeMode, onSelectMode }) {
+export default function ModeSelector({ currentMode, onSelect, onClose }) {
   return (
-    <div className="panel-section">
-      <div className="panel-label">MODE</div>
-      <div className="mode-grid">
-        {MODES.map((m) => (
-          <div
-            key={m.id}
-            className={`mode-card ${activeMode === m.id ? 'active' : ''}`}
-            data-mode={m.id}
-            onClick={() => onSelectMode(m.id)}
-            role="button"
-            tabIndex={0}
+    <>
+      {/* Backdrop */}
+      <div className="mode-backdrop" onClick={onClose} />
+
+      {/* Sheet */}
+      <div className="mode-sheet">
+        <div className="mode-sheet-handle" />
+        <div className="mode-sheet-title">Switch Mode</div>
+
+        <div className="mode-grid">
+          {Object.values(MODES).filter(m => !m.isDefault).map(mode => (
+            <button
+              key={mode.id}
+              className={`mode-card ${currentMode === mode.id ? 'active' : ''}`}
+              style={{ '--mode-color': mode.color }}
+              onClick={() => {
+                onSelect(mode.id);
+                onClose();
+              }}
+            >
+              <span className="mode-card-icon">{mode.icon}</span>
+              <span className="mode-card-label">{mode.label}</span>
+              <span className="mode-card-desc">{mode.description}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Return to General */}
+        {currentMode !== 'general' && (
+          <button
+            className="mode-general-btn"
+            onClick={() => { onSelect('general'); onClose(); }}
           >
-            <div className="mode-icon" style={{ color: m.color }}>{m.icon}</div>
-            <div className="mode-name">{m.name}</div>
-            <div className="mode-desc">{m.desc}</div>
-          </div>
-        ))}
+            Return to General
+          </button>
+        )}
       </div>
-    </div>
+    </>
   );
 }
-
-export { MODES };

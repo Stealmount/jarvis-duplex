@@ -1,6 +1,6 @@
 import { getSessionOrGuest } from '@/lib/auth';
 import { NextResponse } from 'next/server';
-import { streamFromModel, autoSelectModel, getAvailableProviders, ALL_MODELS } from '@/lib/providers/router';
+import { streamFromModel, autoSelectModel, getAvailableProviders } from '@/lib/providers/router';
 import { SYSTEM_PROMPTS } from '@/lib/prompts';
 import { detectLanguage, getLanguageInstruction } from '@/lib/language';
 import { getSupabaseAdmin } from '@/lib/supabase';
@@ -79,11 +79,7 @@ export async function POST(req) {
 
   // Determine model
   const available = getAvailableProviders();
-  let model;
-  if (modelId) {
-    model = ALL_MODELS.find(m => m.id === modelId && available.includes(m.provider));
-  }
-  if (!model) model = autoSelectModel(mode || 'general', available);
+  const model = autoSelectModel(mode || 'general', available);
   if (!model) return NextResponse.json({ error: 'No providers configured. Add at least one API key to .env.local' }, { status: 503 });
 
   // ── Build system prompt with language detection ──

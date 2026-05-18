@@ -54,12 +54,21 @@ function ModelDetail({ model, provider }) {
 
 export default function ChatFeed({ messages, mode, streamingText, streamingModel, isThinking }) {
   const feedRef = useRef(null);
+  const bottomRef = useRef(null);
 
+  // Scroll to bottom after every new message
   useEffect(() => {
-    if (feedRef.current) {
-      feedRef.current.scrollTop = feedRef.current.scrollHeight;
-    }
-  }, [messages, streamingText]);
+    if (!bottomRef.current) return;
+    bottomRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages.length]);
+
+  // Also scroll during streaming (token by token)
+  useEffect(() => {
+    if (!streamingText || !feedRef.current) return;
+    const feed = feedRef.current;
+    const isNearBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 100;
+    if (isNearBottom) feed.scrollTop = feed.scrollHeight;
+  }, [streamingText]);
 
   if (messages.length === 0 && !streamingText) {
     return (
@@ -145,6 +154,9 @@ export default function ChatFeed({ messages, mode, streamingText, streamingModel
           </div>
         </div>
       )}
+      
+      {/* Invisible anchor at the bottom */}
+      <div ref={bottomRef} style={{ height: 1, flexShrink: 0 }} aria-hidden="true" />
     </div>
   );
 }
