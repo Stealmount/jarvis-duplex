@@ -48,6 +48,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" data-theme="dark" className={`${bebasNeue.variable} ${dmSans.variable} ${dmMono.variable} ${cormorant.variable}`}>
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('jarvis_theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}` }} />
       </head>
       <body>

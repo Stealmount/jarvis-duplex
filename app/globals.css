@@ -9,8 +9,8 @@
   --accent:#ffffff;--accent-dim:rgba(255,255,255,0.08);--accent-glow:rgba(255,255,255,0.15);
   --mode-general:#E8572A;--mode-therapy:#6EBF8B;--mode-deep:#7B8FFF;--mode-study:#F5C842;--mode-research:#4ABDE8;
   --voice-idle:rgba(255,255,255,0.2);--voice-listening:#00E5B0;--voice-thinking:#F5C842;--voice-speaking:#E8572A;
-  --font-display:var(--loaded-bebas,'Bebas Neue'),sans-serif;--font-serif:var(--loaded-cormorant,'Cormorant Garamond'),serif;
-  --font-sans:var(--loaded-dm-sans,'DM Sans'),sans-serif;--font-mono:var(--loaded-dm-mono,'DM Mono'),monospace;
+  --font-display:'Playfair Display',var(--loaded-cormorant,'Cormorant Garamond'),serif;--font-serif:'Playfair Display',var(--loaded-cormorant,'Cormorant Garamond'),serif;
+  --font-sans:'Plus Jakarta Sans',var(--loaded-dm-sans,'DM Sans'),sans-serif;--font-mono:var(--loaded-dm-mono,'DM Mono'),monospace;
   --ease-out-expo:cubic-bezier(0.16,1,0.3,1);--ease-spring:cubic-bezier(0.34,1.56,0.64,1);
   --duration-fast:200ms;--duration-mid:400ms;--duration-slow:700ms;
   --input-radius:28px;--sidebar-bg:#0d0d0d;
@@ -49,8 +49,8 @@ input, textarea, select { font-size: 16px !important; }
 ::-webkit-scrollbar-thumb{background:var(--scrollbar,var(--border-mid));border-radius:2px;}
 
 /* Auth Page */
-.auth-page { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 24px; gap: 24px; background: var(--bg); }
-.auth-headline { font-family: var(--font-sans); font-size: clamp(22px, 5vw, 32px); font-weight: 500; color: var(--text-1); text-align: center; margin: 0; letter-spacing: -0.02em; }
+.auth-page { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 24px; gap: 24px; background: transparent; }
+.auth-headline { font-family: var(--font-serif); font-size: clamp(24px, 5.5vw, 36px); font-weight: 400; color: var(--text-1); text-align: center; margin: 0; letter-spacing: -0.01em; }
 .auth-sub { font-family: var(--font-sans); font-size: 15px; color: var(--text-2); text-align: center; margin: 6px 0 0; }
 .auth-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 360px; }
 .auth-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 14px 20px; border-radius: 14px; font-family: var(--font-sans); font-size: 15px; cursor: pointer; transition: transform 150ms, opacity 150ms; }

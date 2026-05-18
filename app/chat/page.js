@@ -7,18 +7,152 @@ import { initDuplex, stopDuplex } from '@/lib/duplex';
 import ImagineView from '@/components/ImagineView';
 import ProjectsView from '@/components/ProjectsView';
 import ArtifactsView from '@/components/ArtifactsView';
+import JarvisLogo from '@/components/JarvisLogo';
+
+// ─── ELEGANT SLIM SVG ICONS ───
+const SearchIcon = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <circle cx="11" cy="11" r="8" />
+    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </svg>
+);
+
+const ChatsIcon = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
+const ProjectsIcon = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
+const ImagineIcon = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+  </svg>
+);
+
+const ArtifactsIcon = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+    <line x1="12" y1="22.08" x2="12" y2="12" />
+  </svg>
+);
+
+const VoiceIcon = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+    <path d="M19 10v1a7 7 0 0 1-14 0v-1M12 19v4M8 23h8" />
+  </svg>
+);
+
+const SettingsIcon = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+  </svg>
+);
+
+const SunIcon = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+  </svg>
+);
+
+const MoonIcon = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+  </svg>
+);
+
+const IncognitoIcon = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+    <path d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+    <line x1="2" y1="2" x2="22" y2="22" />
+  </svg>
+);
+
+const SendIcon = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <line x1="12" y1="19" x2="12" y2="5" />
+    <polyline points="5 12 12 5 19 12" />
+  </svg>
+);
+
+const PlusIcon = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+);
+
+// ─── HIGH FIDELITY WAV ENCODER FOR DUPLEX VOICE ───
+function float32ToWav(float32Array, sampleRate = 16000) {
+  const buffer = new ArrayBuffer(44 + float32Array.length * 2);
+  const view = new DataView(buffer);
+
+  // Write RIFF Header descriptor
+  writeString(view, 0, 'RIFF');
+  view.setUint32(4, 36 + float32Array.length * 2, true);
+  writeString(view, 8, 'WAVE');
+  
+  // Write format subchunk
+  writeString(view, 12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // Linear PCM
+  view.setUint16(22, 1, true); // 1 channel (mono)
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true); // Byte rate
+  view.setUint16(32, 2, true); // Block align
+  view.setUint16(34, 16, true); // 16-bit PCM
+
+  // Write data subchunk descriptor
+  writeString(view, 36, 'data');
+  view.setUint32(40, float32Array.length * 2, true);
+
+  // Write PCM audio samples
+  let offset = 44;
+  for (let i = 0; i < float32Array.length; i++, offset += 2) {
+    let s = Math.max(-1, Math.min(1, float32Array[i]));
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+  }
+
+  return new Blob([view], { type: 'audio/wav' });
+}
+
+function writeString(view, offset, string) {
+  for (let i = 0; i < string.length; i++) {
+    view.setUint8(offset + i, string.charCodeAt(i));
+  }
+}
 
 const MODELS = [
-  { id: 'deepseek/deepseek-v4-flash', name: 'DeepSeek V4 Flash', provider: 'DeepSeek', category: 'general', description: 'Lightning-fast inference', free: true },
-  { id: 'minimax/minimax-m2.5', name: 'MiniMax M2.5', provider: 'MiniMax', category: 'coding', description: 'Creative writing & chat', free: true },
+  { id: 'google/gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite', provider: 'Google', category: 'general', description: 'Google\'s fastest native speed model', free: true },
+  { id: 'google/gemini-3-flash-preview', name: 'Gemini 3 Flash', provider: 'Google', category: 'general', description: 'Google\'s newest premium flagship preview', free: true },
+  { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google', category: 'reasoning', description: 'Google\'s premium reasoning & coding model', free: false },
+  { id: 'google/gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro (Preview)', provider: 'Google', category: 'reasoning', description: 'Google\'s absolute latest high-intelligence model', free: false },
+  { id: 'groq/llama-3.3-70b-versatile', name: 'Llama 3.3 70B (Groq)', provider: 'Groq', category: 'coding', description: 'Ultra-low latency open-weights powerhouse', free: true },
+  { id: 'openrouter/deepseek/deepseek-chat', name: 'DeepSeek V3 (OpenRouter)', provider: 'OpenRouter', category: 'general', description: 'DeepSeek flagship intelligence via OpenRouter', free: true },
+  { id: 'openrouter/deepseek/deepseek-r1', name: 'DeepSeek R1 (OpenRouter)', provider: 'OpenRouter', category: 'reasoning', description: 'Full reasoning chain-of-thought model', free: false },
+  { id: 'nvidia/deepseek/deepseek-r1', name: 'DeepSeek R1 (NVIDIA NIM)', provider: 'NVIDIA', category: 'reasoning', description: 'Nvidia-hosted elite reasoning model', free: false },
+  { id: 'nvidia/nvidia/llama-3.1-nemotron-70b-instruct', name: 'Nemotron 70B (NVIDIA NIM)', provider: 'NVIDIA', category: 'general', description: 'Nvidia\'s custom fine-tuned powerhouse', free: false },
+  { id: 'nvidia/meta/llama-3.3-70b-instruct', name: 'Llama 3.3 70B (NVIDIA NIM)', provider: 'NVIDIA', category: 'coding', description: 'Meta Llama 3.3 running on NIM hardware', free: false },
+  { id: 'minimax/minimax-m2.5', name: 'MiniMax M2.5', provider: 'MiniMax', category: 'creative', description: 'MiniMax creative writing & dialogue specialist', free: true },
 ];
 
 const CATEGORIES = [
   { key: 'all', label: 'All Models' },
-  { key: 'coding', label: '💻 Code' },
-  { key: 'reasoning', label: '🧠 Deep Think' },
-  { key: 'general', label: '💬 General' },
-  { key: 'creative', label: '✨ Creative' },
+  { key: 'coding', label: 'Code' },
+  { key: 'reasoning', label: 'Deep Think' },
+  { key: 'general', label: 'General' },
+  { key: 'creative', label: 'Creative' },
 ];
 
 export default function ChatPage() {
@@ -30,14 +164,16 @@ export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('deepseek/deepseek-v4-flash');
+  const [selectedModel, setSelectedModel] = useState('google/gemini-3.1-flash-lite');
   const [activeCategory, setActiveCategory] = useState('all');
+  const [modelMenuOpen, setModelMenuOpen] = useState(false);
   
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversations, setConversations] = useState([]);
   const [attachedFiles, setAttachedFiles] = useState([]);
+  const [incognitoEnabled, setIncognitoEnabled] = useState(false);
   const [activeMode, setActiveMode] = useState('general');
   const fileInputRef = useRef(null);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
@@ -53,6 +189,14 @@ export default function ChatPage() {
       }
     }
   }, []);
+
+  useEffect(() => {
+    const handleOutsideClick = () => setModelMenuOpen(false);
+    if (modelMenuOpen) {
+      window.addEventListener('click', handleOutsideClick);
+    }
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, [modelMenuOpen]);
 
   const handleTabChange = (tabName) => {
     setActiveTab(tabName);
@@ -242,6 +386,7 @@ export default function ChatPage() {
 
       const finalMessages = [...currentMessages, assistantMsg];
       setMessages(finalMessages);
+      setIsLoading(false);
 
       // Speak text if voice is active
       if (voiceEnabled && typeof window !== 'undefined' && window.speechSynthesis) {
@@ -252,26 +397,28 @@ export default function ChatPage() {
         speechSynthesis.speak(utt);
       }
 
-      // Proactively cache thread if it's the first message exchange
-      if (messages.length === 0) {
-        const newConv = {
-          id: Date.now().toString(),
-          title: userMsg.content.slice(0, 30) + (userMsg.content.length > 30 ? '...' : ''),
-          messages: finalMessages,
-          model: selectedModel,
-          createdAt: new Date().toISOString(),
-        };
-        const updatedConvs = [newConv, ...conversations];
-        setConversations(updatedConvs);
-        localStorage.setItem('jarvis_conversations', JSON.stringify(updatedConvs));
-      } else {
-        // Update active thread context
-        const activeIdx = conversations.findIndex(c => c.messages[0]?.id === messages[0]?.id);
-        if (activeIdx !== -1) {
-          const updatedConvs = [...conversations];
-          updatedConvs[activeIdx].messages = finalMessages;
+      // Proactively cache thread if it's the first message exchange and not in incognito mode
+      if (!incognitoEnabled) {
+        if (messages.length === 0) {
+          const newConv = {
+            id: Date.now().toString(),
+            title: userMsg.content.slice(0, 30) + (userMsg.content.length > 30 ? '...' : ''),
+            messages: finalMessages,
+            model: selectedModel,
+            createdAt: new Date().toISOString(),
+          };
+          const updatedConvs = [newConv, ...conversations];
           setConversations(updatedConvs);
           localStorage.setItem('jarvis_conversations', JSON.stringify(updatedConvs));
+        } else {
+          // Update active thread context
+          const activeIdx = conversations.findIndex(c => c.messages[0]?.id === messages[0]?.id);
+          if (activeIdx !== -1) {
+            const updatedConvs = [...conversations];
+            updatedConvs[activeIdx].messages = finalMessages;
+            setConversations(updatedConvs);
+            localStorage.setItem('jarvis_conversations', JSON.stringify(updatedConvs));
+          }
         }
       }
     } catch (error) {
@@ -391,10 +538,10 @@ export default function ChatPage() {
     <div
       style={{
         minHeight: '100vh',
-        background: isDark ? '#060608' : '#fafafa',
+        background: 'transparent',
         color: isDark ? '#e4e4e7' : '#18181b',
         display: 'flex',
-        fontFamily: 'var(--loaded-dm-sans), -apple-system, BlinkMacSystemFont, sans-serif',
+        fontFamily: 'var(--font-sans), -apple-system, BlinkMacSystemFont, sans-serif',
         overflow: 'hidden',
         position: 'relative',
         zIndex: 1,
@@ -437,9 +584,7 @@ export default function ChatPage() {
             onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
-            <span style={{ fontSize: '1.4rem', fontWeight: 800, letterSpacing: '0.15em', fontFamily: 'var(--loaded-bebas), sans-serif', color: isDark ? '#fff' : '#000' }}>
-              JARVIS
-            </span>
+            <JarvisLogo size="sidebar" />
           </div>
 
           <button
@@ -467,17 +612,17 @@ export default function ChatPage() {
               e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)';
             }}
           >
-            <span style={{ fontSize: '1.1rem' }}>+</span> New Chat
+            <PlusIcon /> New Chat
           </button>
 
           {/* Nav Items */}
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
             {[
-              { icon: '🔍', label: 'Search', action: () => router.push('/') },
-              { icon: '💬', label: 'Chats', action: () => handleTabChange('chat') },
-              { icon: '📁', label: 'Projects', action: () => handleTabChange('projects') },
-              { icon: '⭐', label: 'Imagine', action: () => handleTabChange('imagine') },
-              { icon: '📦', label: 'Artifacts', action: () => handleTabChange('artifacts') },
+              { icon: <SearchIcon />, label: 'Search', action: () => router.push('/') },
+              { icon: <ChatsIcon />, label: 'Chats', action: () => handleTabChange('chat') },
+              { icon: <ProjectsIcon />, label: 'Projects', action: () => handleTabChange('projects') },
+              { icon: <ImagineIcon />, label: 'Imagine', action: () => handleTabChange('imagine') },
+              { icon: <ArtifactsIcon />, label: 'Artifacts', action: () => handleTabChange('artifacts') },
             ].map(item => {
               const isTabActive = activeTab === (item.label === 'Chats' ? 'chat' : item.label.toLowerCase());
               return (
@@ -509,7 +654,7 @@ export default function ChatPage() {
                     }
                   }}
                 >
-                  <span style={{ fontSize: '1.1rem' }}>{item.icon}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{item.icon}</span>
                   {item.label}
                 </div>
               );
@@ -590,7 +735,7 @@ export default function ChatPage() {
               gap: '0.35rem',
             }}
           >
-            ⚙️ Settings
+            <SettingsIcon /> Settings
           </button>
           <button
             onClick={() => setVoiceEnabled(!voiceEnabled)}
@@ -610,7 +755,7 @@ export default function ChatPage() {
               gap: '0.35rem',
             }}
           >
-            🎙️ Voice
+            <VoiceIcon /> Voice
           </button>
           <button
             onClick={handleThemeChange}
@@ -630,7 +775,7 @@ export default function ChatPage() {
               gap: '0.35rem',
             }}
           >
-            {isDark ? '☀️ Light' : '🌙 Dark'}
+            {isDark ? <><SunIcon /> Light</> : <><MoonIcon /> Dark</>}
           </button>
         </div>
       </aside>
@@ -727,25 +872,16 @@ export default function ChatPage() {
                 textAlign: 'center',
                 gap: '1.25rem',
               }}>
-                <h1 style={{
-                  fontSize: 'clamp(2.5rem, 8vw, 4.5rem)',
-                  fontWeight: 800,
-                  letterSpacing: '0.25em',
-                  margin: 0,
-                  background: 'linear-gradient(135deg, #60a5fa, #c084fc, #f472b6)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                  fontFamily: 'var(--loaded-bebas), sans-serif',
-                }}>
-                  JARVIS
-                </h1>
+                <div style={{ marginBottom: '0.5rem' }}>
+                  <JarvisLogo size="greeting" />
+                </div>
                 <h2 style={{
-                  fontSize: 'clamp(1.15rem, 3.5vw, 1.6rem)',
-                  fontWeight: 700,
+                  fontSize: 'clamp(1.25rem, 4vw, 1.8rem)',
+                  fontWeight: 300,
                   margin: 0,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
+                  fontFamily: 'var(--font-serif), serif',
+                  letterSpacing: '0.02em',
+                  color: isDark ? '#e4e4e7' : '#18181b',
                 }}>
                   Good Evening, {userInfo?.name || 'Guest'}.
                 </h2>
@@ -908,31 +1044,42 @@ export default function ChatPage() {
             
             <div style={{
               display: 'flex',
-              alignItems: 'center',
-              gap: '0.85rem',
-              padding: '0.6rem 0.85rem',
-              borderRadius: '24px',
-              border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
-              background: isDark ? '#232323' : '#e0e0e0',
-              color: isDark ? '#e0e0e0' : '#1a1a1a'
+              flexDirection: 'column',
+              padding: '0.75rem 1rem',
+              borderRadius: '20px',
+              border: incognitoEnabled 
+                ? `1px solid rgba(139, 92, 246, 0.45)` 
+                : `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+              boxShadow: incognitoEnabled 
+                ? `0 0 16px rgba(139, 92, 246, 0.25)` 
+                : 'none',
+              background: incognitoEnabled 
+                ? (isDark ? 'rgba(139, 92, 246, 0.05)' : 'rgba(139, 92, 246, 0.02)') 
+                : (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'),
+              color: isDark ? '#e0e0e0' : '#1a1a1a',
+              gap: '6px',
+              transition: 'all 0.3s cubic-bezier(0.16,1,0.3,1)',
             }}>
               <input type="file" ref={fileInputRef} onChange={handleFileSelect} style={{ display: 'none' }} />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'inherit',
-                  fontSize: '1.4rem',
-                  cursor: 'pointer',
-                  padding: '0.25rem',
-                  opacity: 0.7,
+              
+              {incognitoEnabled && (
+                <div style={{
+                  fontSize: '0.72rem',
+                  fontFamily: 'var(--font-mono), monospace',
+                  color: isDark ? '#c084fc' : '#8b5cf6',
                   display: 'flex',
-                  alignItems: 'center'
-                }}
-              >
-                +
-              </button>
+                  alignItems: 'center',
+                  gap: '4px',
+                  opacity: 0.85,
+                  paddingBottom: '2px',
+                  userSelect: 'none'
+                }}>
+                  <span>🔒 Private Session</span>
+                  <span style={{ opacity: 0.6 }}>· Conversations are not saved</span>
+                </div>
+              )}
+
+              {/* Textarea Row */}
               <textarea
                 ref={inputRef}
                 value={input}
@@ -941,63 +1088,224 @@ export default function ChatPage() {
                 placeholder="Type / for skills"
                 rows={1}
                 style={{
-                  flex: 1,
+                  width: '100%',
                   background: 'none',
                   border: 'none',
                   color: 'inherit',
-                  fontSize: '1.05rem',
+                  fontSize: '1.02rem',
                   resize: 'none',
                   outline: 'none',
-                  padding: '0.5rem 0.25rem',
+                  padding: '0.4rem 0',
                   maxHeight: '130px',
                   fontFamily: 'inherit',
                   lineHeight: 1.5,
                 }}
               />
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <select
-                  value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'inherit',
-                    fontSize: '0.9rem',
-                    outline: 'none',
-                    cursor: 'pointer',
-                    opacity: 0.8,
-                    appearance: 'none',
-                    WebkitAppearance: 'none',
-                    paddingRight: '12px',
-                    fontFamily: 'inherit',
-                    fontWeight: 500
-                  }}
-                >
-                  {MODELS.map(m => (
-                    <option key={m.id} value={m.id} style={{ color: isDark ? '#000' : '#000' }}>
-                      {m.name} ▾
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={() => setVoiceEnabled(!voiceEnabled)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: voiceEnabled ? '#60a5fa' : 'inherit',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    opacity: voiceEnabled ? 1 : 0.7,
-                  }}
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="6" y1="9" x2="6" y2="15"></line>
-                    <line x1="10" y1="5" x2="10" y2="19"></line>
-                    <line x1="14" y1="8" x2="14" y2="16"></line>
-                    <line x1="18" y1="11" x2="18" y2="13"></line>
-                  </svg>
-                </button>
+
+              {/* Tools and Action Row */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`, paddingTop: '0.5rem' }}>
+                
+                {/* Left Side: Plus, Mic, and Incognito */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'inherit',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      opacity: 0.7,
+                    }}
+                  >
+                    <PlusIcon size={18} />
+                  </button>
+                  
+                  <button
+                    onClick={() => setVoiceEnabled(!voiceEnabled)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: voiceEnabled ? '#60a5fa' : 'inherit',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      opacity: voiceEnabled ? 1 : 0.7,
+                    }}
+                  >
+                    <VoiceIcon size={18} />
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIncognitoEnabled(!incognitoEnabled);
+                      setMessages([]);
+                    }}
+                    title="Toggle Incognito Mode"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: incognitoEnabled ? '#a78bfa' : 'inherit',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      opacity: incognitoEnabled ? 1 : 0.7,
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <IncognitoIcon size={18} />
+                  </button>
+                </div>
+
+                {/* Right Side: Model dropdown popover and orange upward Arrow send button */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', position: 'relative' }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setModelMenuOpen(!modelMenuOpen); }}
+                    style={{
+                      background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+                      color: 'inherit',
+                      fontSize: '0.8rem',
+                      padding: '5px 10px',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      fontWeight: 600,
+                      transition: 'all 0.2s',
+                      outline: 'none',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}
+                    onMouseLeave={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}
+                  >
+                    <span>🤖 {selectedModelData?.name || 'Select Model'}</span>
+                    <span style={{ fontSize: '0.6rem', opacity: 0.6 }}>▼</span>
+                  </button>
+
+                  {modelMenuOpen && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        position: 'absolute',
+                        bottom: 'calc(100% + 10px)',
+                        right: 0,
+                        width: '320px',
+                        maxHeight: '340px',
+                        overflowY: 'auto',
+                        background: isDark ? 'rgba(15,15,22,0.95)' : 'rgba(255,255,255,0.95)',
+                        backdropFilter: 'blur(20px)',
+                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                        borderRadius: '18px',
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+                        padding: '8px',
+                        zIndex: 1000,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px',
+                      }}
+                    >
+                      <div style={{ padding: '8px 12px 6px 12px', fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.5, borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`, marginBottom: '4px' }}>
+                        Select Active Model
+                      </div>
+                      {MODELS.map(m => {
+                        const isSelected = selectedModel === m.id;
+                        return (
+                          <div
+                            key={m.id}
+                            onClick={() => {
+                              setSelectedModel(m.id);
+                              setModelMenuOpen(false);
+                            }}
+                            style={{
+                              padding: '10px 12px',
+                              borderRadius: '12px',
+                              cursor: 'pointer',
+                              background: isSelected ? 'linear-gradient(135deg, rgba(37,99,235,0.12), rgba(124,58,237,0.12))' : 'transparent',
+                              border: `1px solid ${isSelected ? 'rgba(37,99,235,0.25)' : 'transparent'}`,
+                              color: isSelected ? (isDark ? '#60a5fa' : '#2563eb') : 'inherit',
+                              transition: 'all 0.15s ease',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '2px',
+                              textAlign: 'left',
+                            }}
+                            onMouseEnter={e => {
+                              if (!isSelected) e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)';
+                            }}
+                            onMouseLeave={e => {
+                              if (!isSelected) e.currentTarget.style.background = 'transparent';
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                              <span style={{ fontWeight: 600, fontSize: '0.82rem' }}>{m.name}</span>
+                              <span style={{
+                                fontSize: '0.58rem',
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                padding: '2px 5px',
+                                borderRadius: '4px',
+                                background: m.provider === 'Google' ? 'rgba(66,133,244,0.12)' :
+                                            m.provider === 'Groq' ? 'rgba(242,100,42,0.12)' :
+                                            m.provider === 'OpenRouter' ? 'rgba(124,58,237,0.12)' :
+                                            m.provider === 'NVIDIA' ? 'rgba(118,185,0,0.12)' : 'rgba(255,255,255,0.1)',
+                                color: m.provider === 'Google' ? '#4285F4' :
+                                       m.provider === 'Groq' ? '#F2642A' :
+                                       m.provider === 'OpenRouter' ? '#7C3AED' :
+                                       m.provider === 'NVIDIA' ? '#76B900' : 'inherit',
+                              }}>
+                                {m.provider}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '0.62rem', fontFamily: 'var(--font-mono), monospace', opacity: 0.4, wordBreak: 'break-all', marginTop: '1px' }}>
+                              ID: {m.id}
+                            </div>
+                            <span style={{ fontSize: '0.68rem', opacity: 0.5, lineHeight: 1.3, marginTop: '2px' }}>{m.description}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Upward Arrow Send Button */}
+                  <button
+                    onClick={() => handleSend()}
+                    disabled={(!input.trim() && attachedFiles.length === 0) || isLoading}
+                    style={{
+                      background: (!input.trim() && attachedFiles.length === 0)
+                        ? (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)')
+                        : '#ea580c',
+                      color: (!input.trim() && attachedFiles.length === 0)
+                        ? (isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)')
+                        : '#ffffff',
+                      border: 'none',
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '10px',
+                      cursor: (!input.trim() && attachedFiles.length === 0) ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.2s',
+                      outline: 'none',
+                    }}
+                    onMouseEnter={e => {
+                      if (input.trim() || attachedFiles.length > 0) {
+                        e.currentTarget.style.background = '#f97316';
+                        e.currentTarget.style.transform = 'scale(1.05)';
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (input.trim() || attachedFiles.length > 0) {
+                        e.currentTarget.style.background = '#ea580c';
+                        e.currentTarget.style.transform = 'scale(1)';
+                      }
+                    }}
+                  >
+                    <SendIcon size={14} />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1016,9 +1324,13 @@ export default function ChatPage() {
                     onClick={() => {
                       setActiveMode(mode.id);
                       if (mode.id === 'code') {
-                        setSelectedModel('minimax/minimax-m2.5');
+                        setSelectedModel('groq/llama-3.3-70b-versatile');
+                      } else if (mode.id === 'deep') {
+                        setSelectedModel('google/gemini-2.5-pro');
+                      } else if (mode.id === 'study') {
+                        setSelectedModel('google/gemini-3-flash-preview');
                       } else {
-                        setSelectedModel('deepseek/deepseek-v4-flash');
+                        setSelectedModel('google/gemini-3.1-flash-lite');
                       }
                     }}
                     style={{
@@ -1419,34 +1731,4 @@ export default function ChatPage() {
   );
 }
 
-// Helper: Float32 PCM to WAV Blob
-function float32ToWav(float32, sampleRate = 16000) {
-  const length = float32.length;
-  const buffer = new ArrayBuffer(44 + length * 2);
-  const view = new DataView(buffer);
 
-  function writeString(offset, str) {
-    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
-  }
-
-  writeString(0, 'RIFF');
-  view.setUint32(4, 36 + length * 2, true);
-  writeString(8, 'WAVE');
-  writeString(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeString(36, 'data');
-  view.setUint32(40, length * 2, true);
-
-  for (let i = 0; i < length; i++) {
-    const s = Math.max(-1, Math.min(1, float32[i]));
-    view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-  }
-
-  return new Blob([buffer], { type: 'audio/wav' });
-}
