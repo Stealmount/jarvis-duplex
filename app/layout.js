@@ -1,6 +1,7 @@
 import './globals.css';
 import { SessionProvider } from 'next-auth/react';
 import { Bebas_Neue, DM_Sans, DM_Mono, Cormorant_Garamond } from 'next/font/google';
+import ParticleBackground from '@/components/ParticleBackground';
 
 const bebasNeue = Bebas_Neue({
   weight: '400',
@@ -51,6 +52,7 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <SessionProvider>
+          <ParticleBackground />
           {children}
         </SessionProvider>
       </body>
