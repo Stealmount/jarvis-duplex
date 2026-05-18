@@ -1,21 +1,25 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 
+// Upload types with their required model capabilities
 const FILE_TYPES = [
-  { label: '🖼 Image', accept: 'image/jpeg,image/png,image/webp,image/gif' },
-  { label: '📄 PDF', accept: 'application/pdf' },
-  { label: '🎵 Audio', accept: 'audio/*' },
-  { label: '🎬 Video', accept: 'video/mp4,video/webm' },
-  { label: '📝 Document', accept: '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
-  { label: '📊 Presentation', accept: '.pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation' },
+  { label: '🖼 Image', accept: 'image/jpeg,image/png,image/webp,image/gif', capability: 'image_input', fallbackMsg: 'Current model doesn\'t support images — will extract via OCR' },
+  { label: '📄 PDF', accept: 'application/pdf', capability: 'pdf', fallbackMsg: 'PDF will be extracted client-side' },
+  { label: '🎵 Audio', accept: 'audio/*', capability: 'audio_input', fallbackMsg: 'Audio will be transcribed first' },
+  { label: '🎬 Video', accept: 'video/mp4,video/webm', capability: null, fallbackMsg: null },
+  { label: '📝 Document', accept: '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document', capability: null, fallbackMsg: null },
+  { label: '📊 Presentation', accept: '.pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation', capability: null, fallbackMsg: null },
 ];
 
-export default function InputBar({ onSend, onFileSelect, attachments, onRemoveAttachment, isDuplex, isLoading, onPTTStart, onPTTEnd }) {
+export default function InputBar({ onSend, onFileSelect, attachments, onRemoveAttachment, isDuplex, isLoading, onPTTStart, onPTTEnd, currentModelCapabilities, onShowToast }) {
   const [text, setText] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const textareaRef = useRef(null);
   const fileRefs = useRef([]);
   const menuRef = useRef(null);
+
+  // Check if model supports a capability
+  const caps = useMemo(() => currentModelCapabilities || ['text'], [currentModelCapabilities]);
 
   useEffect(() => {
     const h = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
@@ -42,6 +46,16 @@ export default function InputBar({ onSend, onFileSelect, attachments, onRemoveAt
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
   };
 
+  const handleFileClick = (ft, i) => {
+    // Check capability gating
+    if (ft.capability && !caps.includes(ft.capability)) {
+      // Show fallback message but still allow the upload (client-side extraction)
+      if (ft.fallbackMsg && onShowToast) onShowToast(`ℹ️ ${ft.fallbackMsg}`);
+    }
+    fileRefs.current[i]?.click();
+    setMenuOpen(false);
+  };
+
   return (
     <div className="input-bar-wrapper" id="input-bar">
       {attachments.length > 0 && (
@@ -58,18 +72,28 @@ export default function InputBar({ onSend, onFileSelect, attachments, onRemoveAt
         <div style={{ position: 'relative' }} ref={menuRef}>
           <button className="attach-btn" onClick={() => setMenuOpen(!menuOpen)} title="Attach file" id="attach-btn">📎</button>
           <div className={`attach-menu ${menuOpen ? 'open' : ''}`}>
-            {FILE_TYPES.map((ft, i) => (
-              <button key={ft.label} className="attach-menu-item" onClick={() => { fileRefs.current[i]?.click(); setMenuOpen(false); }}>
-                {ft.label}
-                <input
-                  type="file"
-                  accept={ft.accept}
-                  hidden
-                  ref={el => fileRefs.current[i] = el}
-                  onChange={(e) => { if (e.target.files[0]) onFileSelect(e.target.files[0]); e.target.value = ''; }}
-                />
-              </button>
-            ))}
+            {FILE_TYPES.map((ft, i) => {
+              const supported = !ft.capability || caps.includes(ft.capability);
+              return (
+                <button
+                  key={ft.label}
+                  className="attach-menu-item"
+                  onClick={() => handleFileClick(ft, i)}
+                  style={!supported ? { opacity: 0.6 } : undefined}
+                  title={!supported ? ft.fallbackMsg : undefined}
+                >
+                  {ft.label}
+                  {!supported && <span style={{ fontSize: 9, color: 'var(--text-3)', marginLeft: 'auto' }}>⚠</span>}
+                  <input
+                    type="file"
+                    accept={ft.accept}
+                    hidden
+                    ref={el => fileRefs.current[i] = el}
+                    onChange={(e) => { if (e.target.files[0]) onFileSelect(e.target.files[0]); e.target.value = ''; }}
+                  />
+                </button>
+              );
+            })}
           </div>
         </div>
         <textarea

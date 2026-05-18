@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ThemeToggle from './ThemeToggle';
 
-export default function TopNav({ status, usage, onToggleSidebar, onTogglePanel, userInfo }) {
+export default function TopNav({ status, usage, onToggleSidebar, onTogglePanel, userInfo, streamingModel }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropRef = useRef(null);
   const router = useRouter();
@@ -35,7 +35,7 @@ export default function TopNav({ status, usage, onToggleSidebar, onTogglePanel, 
       <div className="nav-status">
         <span className={`nav-status-dot ${statusClass}`} />
         <span>{statusText}</span>
-        {/* Model name intentionally removed — never show specific model names */}
+        {streamingModel && <span style={{ opacity: 0.5, fontSize: 9, marginLeft: 4 }}>· {streamingModel}</span>}
       </div>
       <div className="nav-spacer" />
       {isDev && (

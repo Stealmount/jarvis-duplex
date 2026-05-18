@@ -11,64 +11,71 @@ import ModelPicker from '@/components/ModelPicker';
 import VoiceOrb from '@/components/VoiceOrb';
 import { splitIntoSentences, getPauseAfterSentence, getThinkingPause } from '@/lib/tts-pacing';
 import { stopDuplex } from '@/lib/duplex';
+import { getLocalThreads, setLocalThreads, saveMessageToLocal, deleteLocalThread, setLocalCurrentThreadId } from '@/lib/storage';
 
 const Cursor = dynamic(() => import('@/components/Cursor'), { ssr: false });
 
 // Full model catalog — synced with lib/providers/router.js
 const ALL_MODELS = [
   // Cerebras
-  { id:'llama3.1-70b',label:'Llama 3.1 70B',provider:'cerebras',speed:'fast',tier:'free',specialty:'General · Ultra-fast',bestFor:['general','therapy'],description:'World\'s fastest free LLM inference.'},
-  { id:'llama3.1-8b',label:'Llama 3.1 8B',provider:'cerebras',speed:'fast',tier:'free',specialty:'General · Lightning fast',bestFor:['general'],description:'Extremely fast responses.'},
+  { id:'llama3.1-70b',label:'Llama 3.1 70B',provider:'cerebras',speed:'fast',tier:'free',specialty:'General · Ultra-fast',bestFor:['general','therapy'],capabilities:['text'],description:'World\'s fastest free LLM inference.'},
+  { id:'llama3.1-8b',label:'Llama 3.1 8B',provider:'cerebras',speed:'fast',tier:'free',specialty:'General · Lightning fast',bestFor:['general'],capabilities:['text'],description:'Extremely fast responses.'},
   // SambaNova
-  { id:'Meta-Llama-3.1-405B-Instruct',label:'Llama 3.1 405B',provider:'sambanova',speed:'medium',tier:'free',specialty:'Reasoning · Deep analysis',bestFor:['deep','study'],description:'Largest open model.'},
-  { id:'Meta-Llama-3.1-70B-Instruct',label:'Llama 3.1 70B (SN)',provider:'sambanova',speed:'fast',tier:'free',specialty:'General · Balanced',bestFor:['general'],description:'Strong general model.'},
+  { id:'Meta-Llama-3.1-405B-Instruct',label:'Llama 3.1 405B',provider:'sambanova',speed:'medium',tier:'free',specialty:'Reasoning · Deep analysis',bestFor:['deep','study'],capabilities:['text'],description:'Largest open model.'},
+  { id:'Meta-Llama-3.1-70B-Instruct',label:'Llama 3.1 70B (SN)',provider:'sambanova',speed:'fast',tier:'free',specialty:'General · Balanced',bestFor:['general'],capabilities:['text'],description:'Strong general model.'},
   // Groq
-  { id:'llama-3.1-8b-instant',label:'Llama 3.1 8B Instant',provider:'groq',speed:'fast',tier:'free',specialty:'General · Instant replies',bestFor:['general'],description:'Ideal for voice.'},
-  { id:'llama-3.3-70b-versatile',label:'Llama 3.3 70B',provider:'groq',speed:'medium',tier:'free',specialty:'Study · Research',bestFor:['study','research'],description:'Versatile and capable.'},
-  { id:'gemma2-9b-it',label:'Gemma 2 9B',provider:'groq',speed:'fast',tier:'free',specialty:'General · Concise',bestFor:['general'],description:'Fast on Groq.'},
-  { id:'mixtral-8x7b-32768',label:'Mixtral 8x7B',provider:'groq',speed:'fast',tier:'free',specialty:'General · Long context',bestFor:['general'],description:'MoE model.'},
+  { id:'llama-3.1-8b-instant',label:'Llama 3.1 8B Instant',provider:'groq',speed:'fast',tier:'free',specialty:'General · Instant replies',bestFor:['general'],capabilities:['text'],description:'Ideal for voice.'},
+  { id:'llama-3.3-70b-versatile',label:'Llama 3.3 70B',provider:'groq',speed:'medium',tier:'free',specialty:'Study · Research',bestFor:['study','research'],capabilities:['text'],description:'Versatile and capable.'},
+  { id:'gemma2-9b-it',label:'Gemma 2 9B',provider:'groq',speed:'fast',tier:'free',specialty:'General · Concise',bestFor:['general'],capabilities:['text'],description:'Fast on Groq.'},
+  { id:'mixtral-8x7b-32768',label:'Mixtral 8x7B',provider:'groq',speed:'fast',tier:'free',specialty:'General · Long context',bestFor:['general'],capabilities:['text'],description:'MoE model.'},
   // OpenRouter
-  { id:'deepseek/deepseek-r1:free',label:'DeepSeek R1',provider:'openrouter',speed:'medium',tier:'free',specialty:'Reasoning · Math · Code',bestFor:['deep','study'],description:'Reasoning model.'},
-  { id:'deepseek/deepseek-v3:free',label:'DeepSeek V3',provider:'openrouter',speed:'fast',tier:'free',specialty:'Code · General',bestFor:['general','deep'],description:'Coding excellence.'},
-  { id:'google/gemma-2-9b-it:free',label:'Gemma 2 9B (OR)',provider:'openrouter',speed:'fast',tier:'free',specialty:'General · Concise',bestFor:['general'],description:'Google via OR.'},
-  { id:'mistralai/mistral-7b-instruct:free',label:'Mistral 7B',provider:'openrouter',speed:'fast',tier:'free',specialty:'General · Instruction following',bestFor:['general'],description:'Reliable.'},
-  { id:'microsoft/phi-3-mini-128k-instruct:free',label:'Phi-3 Mini 128K',provider:'openrouter',speed:'fast',tier:'free',specialty:'Long context · Code',bestFor:['study'],description:'128K context.'},
-  { id:'qwen/qwen-2.5-72b-instruct:free',label:'Qwen 2.5 72B',provider:'openrouter',speed:'medium',tier:'free',specialty:'Code · Multilingual',bestFor:['deep','study'],description:'Code + multilingual.'},
+  { id:'deepseek/deepseek-r1:free',label:'DeepSeek R1',provider:'openrouter',speed:'medium',tier:'free',specialty:'Reasoning · Math · Code',bestFor:['deep','study'],capabilities:['text'],description:'Reasoning model.'},
+  { id:'deepseek/deepseek-v3:free',label:'DeepSeek V3',provider:'openrouter',speed:'fast',tier:'free',specialty:'Code · General',bestFor:['general','deep'],capabilities:['text'],description:'Coding excellence.'},
+  { id:'google/gemma-2-9b-it:free',label:'Gemma 2 9B (OR)',provider:'openrouter',speed:'fast',tier:'free',specialty:'General · Concise',bestFor:['general'],capabilities:['text'],description:'Google via OR.'},
+  { id:'mistralai/mistral-7b-instruct:free',label:'Mistral 7B',provider:'openrouter',speed:'fast',tier:'free',specialty:'General · Instruction following',bestFor:['general'],capabilities:['text'],description:'Reliable.'},
+  { id:'microsoft/phi-3-mini-128k-instruct:free',label:'Phi-3 Mini 128K',provider:'openrouter',speed:'fast',tier:'free',specialty:'Long context · Code',bestFor:['study'],capabilities:['text'],description:'128K context.'},
+  { id:'qwen/qwen-2.5-72b-instruct:free',label:'Qwen 2.5 72B',provider:'openrouter',speed:'medium',tier:'free',specialty:'Code · Multilingual',bestFor:['deep','study'],capabilities:['text'],description:'Code + multilingual.'},
   // Kimi
-  { id:'moonshot-v1-8k',label:'Kimi 8K',provider:'kimi',speed:'fast',tier:'free',specialty:'General · Code',bestFor:['general'],description:'Kimi model.'},
-  { id:'moonshot-v1-32k',label:'Kimi 32K',provider:'kimi',speed:'medium',tier:'free',specialty:'Long context · Code · Documents',bestFor:['study','research'],description:'32K context.'},
-  { id:'moonshot-v1-128k',label:'Kimi 128K',provider:'kimi',speed:'medium',tier:'free',specialty:'Ultra-long context · Research',bestFor:['research'],description:'128K context.'},
+  { id:'moonshot-v1-8k',label:'Kimi 8K',provider:'kimi',speed:'fast',tier:'free',specialty:'General · Code',bestFor:['general'],capabilities:['text'],description:'Kimi model.'},
+  { id:'moonshot-v1-32k',label:'Kimi 32K',provider:'kimi',speed:'medium',tier:'free',specialty:'Long context · Code · Documents',bestFor:['study','research'],capabilities:['text'],description:'32K context.'},
+  { id:'moonshot-v1-128k',label:'Kimi 128K',provider:'kimi',speed:'medium',tier:'free',specialty:'Ultra-long context · Research',bestFor:['research'],capabilities:['text'],description:'128K context.'},
   // MiniMax
-  { id:'abab6.5s-chat',label:'MiniMax 6.5s',provider:'minimax',speed:'fast',tier:'free',specialty:'Reasoning · Long context',bestFor:['deep','study'],description:'Strong reasoning.'},
-  { id:'abab5.5-chat',label:'MiniMax 5.5',provider:'minimax',speed:'fast',tier:'free',specialty:'General · Fast',bestFor:['general'],description:'Lighter model.'},
+  { id:'abab6.5s-chat',label:'MiniMax 6.5s',provider:'minimax',speed:'fast',tier:'free',specialty:'Reasoning · Long context',bestFor:['deep','study'],capabilities:['text'],description:'Strong reasoning.'},
+  { id:'abab5.5-chat',label:'MiniMax 5.5',provider:'minimax',speed:'fast',tier:'free',specialty:'General · Fast',bestFor:['general'],capabilities:['text'],description:'Lighter model.'},
   // Google
-  { id:'gemini-1.5-flash',label:'Gemini 1.5 Flash',provider:'google',speed:'fast',tier:'free',specialty:'General · Vision · Code',bestFor:['general','research'],description:'Google fastest.'},
-  { id:'gemini-2.0-flash-exp',label:'Gemini 2.0 Flash',provider:'google',speed:'fast',tier:'free',specialty:'Research · Multimodal',bestFor:['research'],description:'Latest flash.'},
+  { id:'gemini-1.5-flash',label:'Gemini 1.5 Flash',provider:'google',speed:'fast',tier:'free',specialty:'General · Vision · Code',bestFor:['general','research'],capabilities:['text','image_input','pdf'],description:'Google fastest.'},
+  { id:'gemini-2.0-flash-exp',label:'Gemini 2.0 Flash',provider:'google',speed:'fast',tier:'free',specialty:'Research · Multimodal',bestFor:['research'],capabilities:['text','image_input','pdf'],description:'Latest flash.'},
   // Mistral
-  { id:'mistral-small-latest',label:'Mistral Small',provider:'mistral',speed:'fast',tier:'free',specialty:'General · Efficient',bestFor:['general'],description:'Production grade.'},
-  { id:'open-mistral-7b',label:'Mistral 7B',provider:'mistral',speed:'fast',tier:'free',specialty:'General · Open source',bestFor:['general'],description:'Original Mistral.'},
-  { id:'codestral-latest',label:'Codestral',provider:'mistral',speed:'fast',tier:'free',specialty:'Code · 80+ languages',bestFor:['deep'],description:'Dedicated coding.'},
+  { id:'mistral-small-latest',label:'Mistral Small',provider:'mistral',speed:'fast',tier:'free',specialty:'General · Efficient',bestFor:['general'],capabilities:['text'],description:'Production grade.'},
+  { id:'open-mistral-7b',label:'Mistral 7B',provider:'mistral',speed:'fast',tier:'free',specialty:'General · Open source',bestFor:['general'],capabilities:['text'],description:'Original Mistral.'},
+  { id:'codestral-latest',label:'Codestral',provider:'mistral',speed:'fast',tier:'free',specialty:'Code · 80+ languages',bestFor:['deep'],capabilities:['text'],description:'Dedicated coding.'},
   // Cohere
-  { id:'command-r',label:'Command R',provider:'cohere',speed:'fast',tier:'free',specialty:'RAG · Research · Retrieval',bestFor:['general','study'],description:'RAG optimized.'},
-  { id:'command-r-plus',label:'Command R+',provider:'cohere',speed:'medium',tier:'free',specialty:'Reasoning · Analysis',bestFor:['deep','study'],description:'Most capable.'},
+  { id:'command-r',label:'Command R',provider:'cohere',speed:'fast',tier:'free',specialty:'RAG · Research · Retrieval',bestFor:['general','study'],capabilities:['text'],description:'RAG optimized.'},
+  { id:'command-r-plus',label:'Command R+',provider:'cohere',speed:'medium',tier:'free',specialty:'Reasoning · Analysis',bestFor:['deep','study'],capabilities:['text'],description:'Most capable.'},
   // Cloudflare
-  { id:'@cf/meta/llama-3.1-8b-instruct',label:'Llama 3.1 8B (CF)',provider:'cloudflare',speed:'fast',tier:'free',specialty:'General · Edge inference',bestFor:['general'],description:'Edge network.'},
-  { id:'@cf/mistral/mistral-7b-instruct-v0.1',label:'Mistral 7B (CF)',provider:'cloudflare',speed:'fast',tier:'free',specialty:'General · Edge inference',bestFor:['general'],description:'Edge Mistral.'},
+  { id:'@cf/meta/llama-3.1-8b-instruct',label:'Llama 3.1 8B (CF)',provider:'cloudflare',speed:'fast',tier:'free',specialty:'General · Edge inference',bestFor:['general'],capabilities:['text'],description:'Edge network.'},
+  { id:'@cf/mistral/mistral-7b-instruct-v0.1',label:'Mistral 7B (CF)',provider:'cloudflare',speed:'fast',tier:'free',specialty:'General · Edge inference',bestFor:['general'],capabilities:['text'],description:'Edge Mistral.'},
   // NVIDIA
-  { id:'meta/llama-3.1-405b-instruct',label:'Llama 3.1 405B (NIM)',provider:'nvidia',speed:'medium',tier:'free',specialty:'Deep reasoning · Complex tasks',bestFor:['deep','study'],description:'405B on NVIDIA.'},
-  { id:'deepseek/deepseek-r1',label:'DeepSeek R1 (NIM)',provider:'nvidia',speed:'medium',tier:'free',specialty:'Math · Code · Reasoning',bestFor:['deep'],description:'Chain-of-thought.'},
+  { id:'meta/llama-3.1-405b-instruct',label:'Llama 3.1 405B (NIM)',provider:'nvidia',speed:'medium',tier:'free',specialty:'Deep reasoning · Complex tasks',bestFor:['deep','study'],capabilities:['text'],description:'405B on NVIDIA.'},
+  { id:'deepseek/deepseek-r1',label:'DeepSeek R1 (NIM)',provider:'nvidia',speed:'medium',tier:'free',specialty:'Math · Code · Reasoning',bestFor:['deep'],capabilities:['text'],description:'Chain-of-thought.'},
   // HuggingFace
-  { id:'mistralai/Mistral-7B-Instruct-v0.3',label:'Mistral 7B (HF)',provider:'huggingface',speed:'slow',tier:'free',specialty:'General · Open source',bestFor:['general'],description:'Always available.'},
-  { id:'google/gemma-7b-it',label:'Gemma 7B (HF)',provider:'huggingface',speed:'slow',tier:'free',specialty:'General',bestFor:['general'],description:'Google Gemma on HF.'},
+  { id:'mistralai/Mistral-7B-Instruct-v0.3',label:'Mistral 7B (HF)',provider:'huggingface',speed:'slow',tier:'free',specialty:'General · Open source',bestFor:['general'],capabilities:['text'],description:'Always available.'},
+  { id:'google/gemma-7b-it',label:'Gemma 7B (HF)',provider:'huggingface',speed:'slow',tier:'free',specialty:'General',bestFor:['general'],capabilities:['text'],description:'Google Gemma on HF.'},
   // Sarvam
-  { id:'sarvam-2b-v0.5',label:'Sarvam 2B',provider:'sarvam',speed:'fast',tier:'free',specialty:'Hindi · Hinglish · Indian languages',bestFor:['general'],description:'India\'s own LLM.'},
+  { id:'sarvam-2b-v0.5',label:'Sarvam 2B',provider:'sarvam',speed:'fast',tier:'free',specialty:'Hindi · Hinglish · Indian languages',bestFor:['general'],capabilities:['text'],description:'India\'s own LLM.'},
   // Together
-  { id:'meta-llama/Llama-3-8b-chat-hf',label:'Llama 3 8B',provider:'together',speed:'fast',tier:'free',specialty:'General · Chat',bestFor:['general'],description:'Llama 3 on Together.'},
+  { id:'meta-llama/Llama-3-8b-chat-hf',label:'Llama 3 8B',provider:'together',speed:'fast',tier:'free',specialty:'General · Chat',bestFor:['general'],capabilities:['text'],description:'Llama 3 on Together.'},
   // Fireworks
-  { id:'accounts/fireworks/models/llama-v3p1-8b-instruct',label:'Llama 3.1 8B (FW)',provider:'fireworks',speed:'fast',tier:'free',specialty:'General · Fast inference',bestFor:['general'],description:'Optimized inference.'},
+  { id:'accounts/fireworks/models/llama-v3p1-8b-instruct',label:'Llama 3.1 8B (FW)',provider:'fireworks',speed:'fast',tier:'free',specialty:'General · Fast inference',bestFor:['general'],capabilities:['text'],description:'Optimized inference.'},
   // OpenAI (paid)
-  { id:'gpt-4o-mini',label:'GPT-4o Mini',provider:'openai',speed:'fast',tier:'paid',specialty:'General · All-round',bestFor:['general'],description:'Efficient paid model.'},
-  { id:'gpt-4o',label:'GPT-4o',provider:'openai',speed:'medium',tier:'paid',specialty:'Deep reasoning · Research',bestFor:['deep','research'],description:'Most capable OpenAI.'},
+  { id:'gpt-4o-mini',label:'GPT-4o Mini',provider:'openai',speed:'fast',tier:'paid',specialty:'General · All-round',bestFor:['general'],capabilities:['text','image_input','pdf'],description:'Efficient paid model.'},
+  { id:'gpt-4o',label:'GPT-4o',provider:'openai',speed:'medium',tier:'paid',specialty:'Deep reasoning · Research',bestFor:['deep','research'],capabilities:['text','image_input','pdf','audio_input'],description:'Most capable OpenAI.'},
+  // xAI / Grok
+  { id:'grok-3-mini-fast',label:'Grok 3 Mini Fast',provider:'xai',speed:'fast',tier:'paid',specialty:'General · Fast reasoning',bestFor:['general'],capabilities:['text'],description:'xAI fastest Grok.'},
+  { id:'grok-3-mini',label:'Grok 3 Mini',provider:'xai',speed:'fast',tier:'paid',specialty:'Reasoning · Code',bestFor:['general','deep'],capabilities:['text'],description:'Strong reasoning and code.'},
+  { id:'grok-3',label:'Grok 3',provider:'xai',speed:'medium',tier:'paid',specialty:'Deep reasoning · Research',bestFor:['deep','research'],capabilities:['text','image_input'],description:'Most capable xAI model.'},
+  // AIML API
+  { id:'moonshot-v1-8k',label:'Kimi 8K (AIML)',provider:'aimlapi',speed:'fast',tier:'free',specialty:'General · Code',bestFor:['general'],capabilities:['text'],description:'Kimi via AIML gateway.'},
 ];
 
 export default function ChatPage() {
@@ -85,7 +92,7 @@ export default function ChatPage() {
   const [mode, setMode] = useState('general');
   const [autoMode, setAutoMode] = useState(true);
   const [selectedModelId, setSelectedModelId] = useState(null);
-  const [availableProviders, setAvailableProviders] = useState(['cerebras','sambanova','groq','openrouter','google','mistral','cohere','nvidia','cloudflare','sarvam','huggingface','together','fireworks','kimi','minimax','deepseek','openai']);
+  const [availableProviders, setAvailableProviders] = useState(['cerebras','sambanova','groq','openrouter','google','mistral','cohere','nvidia','cloudflare','sarvam','huggingface','together','fireworks','kimi','minimax','deepseek','openai','xai','aimlapi']);
 
   // UI state
   const [streamingText, setStreamingText] = useState('');
@@ -123,14 +130,32 @@ export default function ChatPage() {
   const fullResponseBufRef = useRef('');
   const lastSentenceEndRef = useRef(0);
 
-  // Fetch usage on mount
+  // Fetch usage on mount + dual-layer thread loading
   useEffect(() => {
     fetch('/api/usage').then(r => r.json()).then(d => {
       if (d.count !== undefined) setUsage({ count: d.count, limit: d.limit });
     }).catch(() => {});
-    // Load threads from DB
+
+    // 1. Load from localStorage immediately (zero flash)
+    const localData = getLocalThreads();
+    const localThreadArray = Object.entries(localData)
+      .filter(([, v]) => v && v.meta)
+      .map(([id, v]) => ({ id, ...v.meta }))
+      .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
+    if (localThreadArray.length > 0) setThreads(localThreadArray);
+
+    // 2. Fetch from DB in background, merge
     fetch('/api/threads').then(r => r.json()).then(data => {
-      if (Array.isArray(data)) setThreads(data);
+      if (Array.isArray(data) && data.length > 0) {
+        setThreads(data);
+        // Update localStorage with DB data
+        const newLocal = { ...localData };
+        data.forEach(t => {
+          if (!newLocal[t.id]) newLocal[t.id] = { messages: [], meta: t, synced: true };
+          else { newLocal[t.id].meta = t; newLocal[t.id].synced = true; }
+        });
+        setLocalThreads(newLocal);
+      }
     }).catch(() => {});
   }, []);
 
@@ -169,10 +194,15 @@ export default function ChatPage() {
       if (newThread.id) {
         setThreads(prev => [newThread, ...prev]);
         setActiveThreadId(newThread.id);
+        setLocalCurrentThreadId(newThread.id);
         setMessages([]);
         setStreamingText('');
         setRagContext('');
         setAttachments([]);
+        // Cache in localStorage
+        const local = getLocalThreads();
+        local[newThread.id] = { messages: [], meta: newThread, synced: true };
+        setLocalThreads(local);
         return newThread.id;
       }
     } catch (e) { console.error('Create thread failed:', e); }
@@ -181,16 +211,22 @@ export default function ChatPage() {
     const fallback = { id: fallbackId, title: 'New conversation', mode, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
     setThreads(prev => [fallback, ...prev]);
     setActiveThreadId(fallbackId);
+    setLocalCurrentThreadId(fallbackId);
     setMessages([]);
     setStreamingText('');
     setRagContext('');
     setAttachments([]);
+    // Cache in localStorage
+    const local = getLocalThreads();
+    local[fallbackId] = { messages: [], meta: fallback, synced: false };
+    setLocalThreads(local);
     return fallbackId;
   }, [mode]);
 
   const deleteThread = useCallback((id) => {
     setThreads(prev => prev.filter(t => t.id !== id));
     if (activeThreadId === id) { setActiveThreadId(null); setMessages([]); }
+    deleteLocalThread(id);
     fetch('/api/threads', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ threadId: id }) }).catch(() => {});
   }, [activeThreadId]);
 
@@ -304,6 +340,8 @@ export default function ChatPage() {
     setAttachments([]);
     setIsLoading(true);
     setVoiceState('thinking');
+    // Cache user message in localStorage
+    saveMessageToLocal(threadId, { role: 'user', content, created_at: userMsg.created_at });
 
     // Build messages array for API
     const apiMessages = [...messages, { role: 'user', content }].map(m => ({
@@ -363,6 +401,7 @@ export default function ChatPage() {
       }
 
       const modelUsed = res.headers.get('X-Model-Used') || '';
+      const providerUsed = res.headers.get('X-Provider-Used') || '';
       setStreamingModel(modelUsed);
       setVoiceState('speaking');
       isAssistantSpeakingRef.current = true;
@@ -399,6 +438,7 @@ export default function ChatPage() {
             role: 'assistant',
             content: fullText,
             model: modelUsed,
+            provider: providerUsed,
             mode,
             created_at: new Date().toISOString(),
           };
@@ -411,6 +451,9 @@ export default function ChatPage() {
           lastSentenceEndRef.current = 0;
           setVoiceState(isDuplex ? 'listening' : 'idle');
           setUsage(prev => ({ ...prev, count: prev.count + 1 }));
+
+          // Cache assistant message in localStorage
+          saveMessageToLocal(threadId, { role: 'assistant', content: fullText, model: modelUsed, provider: providerUsed, mode, created_at: assistantMsg.created_at });
 
           // Save assistant message to DB (async)
           if (threadId && fullText) {
@@ -623,6 +666,7 @@ export default function ChatPage() {
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         onTogglePanel={() => setPanelOpen(!panelOpen)}
         userInfo={userInfo}
+        streamingModel={streamingModel}
       />
       <div className="app-layout">
         {(sidebarOpen || panelOpen) && (
@@ -642,7 +686,7 @@ export default function ChatPage() {
           onDuplexStateChange={handleDuplexStateChange}
         />
         <div className="chat-area">
-          <ChatFeed messages={messages} mode={mode} streamingText={streamingText} />
+          <ChatFeed messages={messages} mode={mode} streamingText={streamingText} streamingModel={streamingModel} isThinking={isLoading && !streamingText} />
           <InputBar
             onSend={sendMessage}
             onFileSelect={handleFileSelect}
@@ -652,6 +696,11 @@ export default function ChatPage() {
             isLoading={isLoading}
             onPTTStart={handlePTTStart}
             onPTTEnd={handlePTTEnd}
+            currentModelCapabilities={(() => {
+              const m = selectedModelId ? ALL_MODELS.find(m => m.id === selectedModelId) : null;
+              return m?.capabilities || ['text'];
+            })()}
+            onShowToast={showToast}
           />
         </div>
         <aside className={`right-panel ${panelOpen ? 'open' : ''}`}>

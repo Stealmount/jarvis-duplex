@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -18,7 +18,41 @@ function formatTime(ts) {
   return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-export default function ChatFeed({ messages, mode, streamingText, streamingModel }) {
+/**
+ * Model detail expander — shows model + provider on click
+ */
+function ModelDetail({ model, provider }) {
+  const [open, setOpen] = useState(false);
+  if (!model && !provider) return null;
+
+  // Parse model label from ID
+  const modelLabel = model || 'auto';
+  const providerLabel = provider || '';
+
+  return (
+    <span
+      className="msg-header-model"
+      onClick={() => setOpen(!open)}
+      style={{ cursor: 'pointer', userSelect: 'none' }}
+      title="Click to see model details"
+    >
+      {open ? (
+        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+          <span style={{ opacity: 0.6 }}>{providerLabel ? `${providerLabel} /` : ''}</span>
+          <span>{modelLabel}</span>
+          <span style={{ fontSize: 8, opacity: 0.4 }}>▲</span>
+        </span>
+      ) : (
+        <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+          <span style={{ opacity: 0.5 }}>⚙</span>
+          <span style={{ fontSize: 8, opacity: 0.4 }}>▼</span>
+        </span>
+      )}
+    </span>
+  );
+}
+
+export default function ChatFeed({ messages, mode, streamingText, streamingModel, isThinking }) {
   const feedRef = useRef(null);
 
   useEffect(() => {
@@ -48,7 +82,7 @@ export default function ChatFeed({ messages, mode, streamingText, streamingModel
                 <div className="msg-mode-border" style={{ background: modeColors[msg.mode] || modeColors.general }} />
                 <div className="msg-header">
                   <span className="msg-header-name">JARVIS</span>
-                  {/* Model name intentionally hidden — never show specific model names */}
+                  <ModelDetail model={msg.model} provider={msg.provider} />
                 </div>
               </>
             )}
@@ -83,13 +117,27 @@ export default function ChatFeed({ messages, mode, streamingText, streamingModel
         </div>
       ))}
 
+      {isThinking && !streamingText && (
+        <div className="msg assistant">
+          <div className="msg-bubble">
+            <div className="msg-mode-border" style={{ background: modeColors[mode] || modeColors.general }} />
+            <div className="msg-header">
+              <span className="msg-header-name">JARVIS</span>
+            </div>
+            <div className="thinking-dots">
+              <span /><span /><span />
+            </div>
+          </div>
+        </div>
+      )}
+
       {streamingText && (
         <div className="msg assistant">
           <div className="msg-bubble">
             <div className="msg-mode-border" style={{ background: modeColors[mode] || modeColors.general }} />
             <div className="msg-header">
               <span className="msg-header-name">JARVIS</span>
-              {/* Model name intentionally hidden during streaming too */}
+              {streamingModel && <span className="msg-header-model" style={{ opacity: 0.5 }}>⚙ {streamingModel}</span>}
             </div>
             <div className="msg-body">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingText}</ReactMarkdown>
