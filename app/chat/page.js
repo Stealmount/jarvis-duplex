@@ -4,6 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import ParticleBackground from '@/components/ParticleBackground';
 import { initDuplex, stopDuplex } from '@/lib/duplex';
+import ImagineView from '@/components/ImagineView';
+import ProjectsView from '@/components/ProjectsView';
+import ArtifactsView from '@/components/ArtifactsView';
 
 const MODELS = [
   { id: 'deepseek/deepseek-v4-flash', name: 'DeepSeek V4 Flash', provider: 'DeepSeek', category: 'general', description: 'Lightning-fast inference', free: true },
@@ -39,6 +42,29 @@ export default function ChatPage() {
   const fileInputRef = useRef(null);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceGender, setVoiceGender] = useState('female');
+  const [activeTab, setActiveTab] = useState('chat');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab) {
+        setActiveTab(tab);
+      }
+    }
+  }, []);
+
+  const handleTabChange = (tabName) => {
+    setActiveTab(tabName);
+    if (tabName === 'chat') {
+      window.history.pushState(null, '', '/chat');
+    } else {
+      window.history.pushState(null, '', `/chat?tab=${tabName}`);
+    }
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  };
   
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -129,10 +155,51 @@ export default function ChatPage() {
     const textToSend = typeof overrideText === 'string' ? overrideText : input;
     if ((!textToSend.trim() && attachedFiles.length === 0) || isLoading) return;
 
+    if (activeTab !== 'chat') {
+      setActiveTab('chat');
+      window.history.pushState(null, '', '/chat');
+    }
+
+    setIsLoading(true);
+
+    let textToAppend = '';
+    if (attachedFiles.length > 0) {
+      const uploadPromises = attachedFiles.map(async ({ file }) => {
+        try {
+          const fd = new FormData();
+          fd.append('file', file);
+          const res = await fetch('/api/upload', {
+            method: 'POST',
+            body: fd,
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.extractedText) {
+              if (data.extractedText === '__CLIENT_EXTRACT__' || data.extractedText === '__CLIENT_EXTRACT_DOCX__') {
+                return `[Attached File: ${file.name}]`;
+              } else {
+                return `[File Content from ${file.name}]:\n${data.extractedText}\n`;
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Failed to upload file:', file.name, err);
+        }
+        return '';
+      });
+
+      const extractedContents = await Promise.all(uploadPromises);
+      textToAppend = extractedContents.filter(Boolean).join('\n');
+    }
+
+    const fullContent = textToAppend 
+      ? `${textToSend.trim()}\n\n${textToAppend}`
+      : textToSend.trim();
+
     const userMsg = {
       id: Date.now().toString(),
       role: 'user',
-      content: textToSend.trim(),
+      content: fullContent,
       timestamp: new Date().toISOString(),
     };
 
@@ -334,7 +401,6 @@ export default function ChatPage() {
       }}
     >
       <div style={{ position: 'absolute', inset: 0, zIndex: -1, opacity: 0.4, pointerEvents: 'none' }}>
-        <ParticleBackground />
       </div>
       {/* ─── SIDEBAR ─── */}
       <aside
@@ -407,39 +473,47 @@ export default function ChatPage() {
           {/* Nav Items */}
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
             {[
-              { icon: '🔍', label: 'Search', route: '/' },
-              { icon: '💬', label: 'Chats', route: '/chat' },
-              { icon: '📁', label: 'Projects', route: '/projects' },
-              { icon: '⭐', label: 'Imagine', route: '/imagine' },
-              { icon: '📦', label: 'Artifacts', route: '/artifacts' },
-            ].map(item => (
-              <div
-                key={item.label}
-                onClick={() => router.push(item.route)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  padding: '0.6rem 0.75rem',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  fontSize: '0.92rem',
-                  color: isDark ? '#a1a1aa' : '#52525b',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)';
-                  e.currentTarget.style.color = isDark ? '#ffffff' : '#000000';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = isDark ? '#a1a1aa' : '#52525b';
-                }}
-              >
-                <span style={{ fontSize: '1.1rem' }}>{item.icon}</span>
-                {item.label}
-              </div>
-            ))}
+              { icon: '🔍', label: 'Search', action: () => router.push('/') },
+              { icon: '💬', label: 'Chats', action: () => handleTabChange('chat') },
+              { icon: '📁', label: 'Projects', action: () => handleTabChange('projects') },
+              { icon: '⭐', label: 'Imagine', action: () => handleTabChange('imagine') },
+              { icon: '📦', label: 'Artifacts', action: () => handleTabChange('artifacts') },
+            ].map(item => {
+              const isTabActive = activeTab === (item.label === 'Chats' ? 'chat' : item.label.toLowerCase());
+              return (
+                <div
+                  key={item.label}
+                  onClick={item.action}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.6rem 0.75rem',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    fontSize: '0.92rem',
+                    background: isTabActive ? (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)') : 'transparent',
+                    color: isTabActive ? (isDark ? '#ffffff' : '#000000') : (isDark ? '#a1a1aa' : '#52525b'),
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => {
+                    if (!isTabActive) {
+                      e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)';
+                      e.currentTarget.style.color = isDark ? '#ffffff' : '#000000';
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (!isTabActive) {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = isDark ? '#a1a1aa' : '#52525b';
+                    }
+                  }}
+                >
+                  <span style={{ fontSize: '1.1rem' }}>{item.icon}</span>
+                  {item.label}
+                </div>
+              );
+            })}
           </nav>
 
           {/* Recent Conversations */}
@@ -601,18 +675,25 @@ export default function ChatPage() {
               color: isDark ? '#a1a1aa' : '#71717a',
               fontFamily: 'var(--loaded-dm-mono), monospace',
             }}>
-              {selectedModelData?.category === 'coding' ? '💻 Code' :
-               selectedModelData?.category === 'reasoning' ? '🧠 Deep Think' :
-               selectedModelData?.category === 'creative' ? '✨ Creative' : '💬 General'}
+              {activeTab === 'chat' ? (
+                selectedModelData?.category === 'coding' ? '💻 Code' :
+                selectedModelData?.category === 'reasoning' ? '🧠 Deep Think' :
+                selectedModelData?.category === 'creative' ? '✨ Creative' : '💬 General'
+              ) : activeTab === 'projects' ? '📁 Projects' :
+                  activeTab === 'imagine' ? '⭐ Imagine' : '📦 Artifacts'}
             </span>
-            <span style={{ fontSize: '0.85rem', opacity: 0.6, fontWeight: 500 }}>
-              {selectedModelData?.name}
-            </span>
+            {activeTab === 'chat' && (
+              <span style={{ fontSize: '0.85rem', opacity: 0.6, fontWeight: 500 }}>
+                {selectedModelData?.name}
+              </span>
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-            <span style={{ fontSize: '0.78rem', opacity: 0.5, fontFamily: 'var(--loaded-dm-mono), monospace' }}>
-              {messages.filter(m => m.role === 'user').length} / 50
-            </span>
+            {activeTab === 'chat' && (
+              <span style={{ fontSize: '0.78rem', opacity: 0.5, fontFamily: 'var(--loaded-dm-mono), monospace' }}>
+                {messages.filter(m => m.role === 'user').length} / 50
+              </span>
+            )}
             <button
               onClick={() => setSettingsOpen(true)}
               style={{
@@ -633,152 +714,166 @@ export default function ChatPage() {
         </header>
 
         {/* Chat Area */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
-          {messages.length === 0 ? (
-            /* Empty Greeting State */
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: '75vh',
-              textAlign: 'center',
-              gap: '1.25rem',
-            }}>
-              <h1 style={{
-                fontSize: 'clamp(2.5rem, 8vw, 4.5rem)',
-                fontWeight: 800,
-                letterSpacing: '0.25em',
-                margin: 0,
-                background: 'linear-gradient(135deg, #60a5fa, #c084fc, #f472b6)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-                fontFamily: 'var(--loaded-bebas), sans-serif',
-              }}>
-                JARVIS
-              </h1>
-              <h2 style={{
-                fontSize: 'clamp(1.15rem, 3.5vw, 1.6rem)',
-                fontWeight: 700,
-                margin: 0,
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-              }}>
-                Good Evening, {userInfo?.name || 'Guest'}.
-              </h2>
-              <p style={{ opacity: 0.5, margin: 0, fontSize: '0.92rem' }}>
-                Sign in to save your conversations and access premium limits.
-              </p>
-
-              {/* Suggested Prompts Grid */}
+        {activeTab === 'chat' && (
+          <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+            {messages.length === 0 ? (
+              /* Empty Greeting State */
               <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                gap: '0.85rem',
-                width: '100%',
-                maxWidth: '740px',
-                padding: '1.5rem 1rem 0 1rem',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '75vh',
+                textAlign: 'center',
+                gap: '1.25rem',
               }}>
-                {suggestedPrompts.map(prompt => (
-                  <button
-                    key={prompt.title}
-                    onClick={() => handlePromptCardClick(prompt.title)}
+                <h1 style={{
+                  fontSize: 'clamp(2.5rem, 8vw, 4.5rem)',
+                  fontWeight: 800,
+                  letterSpacing: '0.25em',
+                  margin: 0,
+                  background: 'linear-gradient(135deg, #60a5fa, #c084fc, #f472b6)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  fontFamily: 'var(--loaded-bebas), sans-serif',
+                }}>
+                  JARVIS
+                </h1>
+                <h2 style={{
+                  fontSize: 'clamp(1.15rem, 3.5vw, 1.6rem)',
+                  fontWeight: 700,
+                  margin: 0,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                }}>
+                  Good Evening, {userInfo?.name || 'Guest'}.
+                </h2>
+                <p style={{ opacity: 0.5, margin: 0, fontSize: '0.92rem' }}>
+                  Sign in to save your conversations and access premium limits.
+                </p>
+
+                {/* Suggested Prompts Grid */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                  gap: '0.85rem',
+                  width: '100%',
+                  maxWidth: '740px',
+                  padding: '1.5rem 1rem 0 1rem',
+                }}>
+                  {suggestedPrompts.map(prompt => (
+                    <button
+                      key={prompt.title}
+                      onClick={() => handlePromptCardClick(prompt.title)}
+                      style={{
+                        textAlign: 'left',
+                        padding: '1.15rem',
+                        borderRadius: '16px',
+                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                        background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+                        color: 'inherit',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s cubic-bezier(0.16,1,0.3,1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.85rem',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.borderColor = '#3b82f6';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+                      }}
+                    >
+                      <span style={{ fontSize: '1.4rem' }}>{prompt.icon}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: '0.92rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {prompt.title}
+                        </div>
+                        <div style={{ fontSize: '0.78rem', opacity: 0.45, marginTop: '0.15rem' }}>
+                          {prompt.subtitle}
+                        </div>
+                      </div>
+                      <span style={{ opacity: 0.3, fontSize: '1.1rem' }}>→</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              /* Message Feed */
+              <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                {messages.map(msg => (
+                  <div
+                    key={msg.id}
                     style={{
-                      textAlign: 'left',
-                      padding: '1.15rem',
-                      borderRadius: '16px',
-                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-                      background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
-                      color: 'inherit',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s cubic-bezier(0.16,1,0.3,1)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.85rem',
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.borderColor = '#3b82f6';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+                      alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                      maxWidth: '85%',
+                      padding: '1rem 1.25rem',
+                      borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                      background: msg.role === 'user'
+                        ? 'linear-gradient(135deg, #2563eb, #7c3aed)'
+                        : isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.035)',
+                      color: msg.role === 'user' ? '#fff' : 'inherit',
+                      fontSize: '0.96rem',
+                      lineHeight: 1.6,
+                      wordBreak: 'break-word',
+                      border: msg.role === 'user' ? 'none' : `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
                     }}
                   >
-                    <span style={{ fontSize: '1.4rem' }}>{prompt.icon}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: '0.92rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {prompt.title}
+                    <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+                    {msg.model && (
+                      <div style={{
+                        fontSize: '0.72rem',
+                        opacity: msg.role === 'user' ? 0.8 : 0.4,
+                        marginTop: '0.6rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        fontFamily: 'var(--loaded-dm-mono), monospace',
+                      }}>
+                        <span>🤖</span> {msg.model}
                       </div>
-                      <div style={{ fontSize: '0.78rem', opacity: 0.45, marginTop: '0.15rem' }}>
-                        {prompt.subtitle}
-                      </div>
-                    </div>
-                    <span style={{ opacity: 0.3, fontSize: '1.1rem' }}>→</span>
-                  </button>
+                    )}
+                  </div>
                 ))}
+                {isLoading && (
+                  <div style={{
+                    alignSelf: 'flex-start',
+                    padding: '1rem 1.35rem',
+                    borderRadius: '18px 18px 18px 4px',
+                    background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.035)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
+                  }}>
+                    <div className="dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', animation: 'dot-pulse 1.2s infinite ease-in-out', animationDelay: '0s' }} />
+                    <div className="dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', animation: 'dot-pulse 1.2s infinite ease-in-out', animationDelay: '0.2s' }} />
+                    <div className="dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', animation: 'dot-pulse 1.2s infinite ease-in-out', animationDelay: '0.4s' }} />
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
               </div>
-            </div>
-          ) : (
-            /* Message Feed */
-            <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {messages.map(msg => (
-                <div
-                  key={msg.id}
-                  style={{
-                    alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                    maxWidth: '85%',
-                    padding: '1rem 1.25rem',
-                    borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                    background: msg.role === 'user'
-                      ? 'linear-gradient(135deg, #2563eb, #7c3aed)'
-                      : isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.035)',
-                    color: msg.role === 'user' ? '#fff' : 'inherit',
-                    fontSize: '0.96rem',
-                    lineHeight: 1.6,
-                    wordBreak: 'break-word',
-                    border: msg.role === 'user' ? 'none' : `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
-                  }}
-                >
-                  <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
-                  {msg.model && (
-                    <div style={{
-                      fontSize: '0.72rem',
-                      opacity: msg.role === 'user' ? 0.8 : 0.4,
-                      marginTop: '0.6rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.35rem',
-                      fontFamily: 'var(--loaded-dm-mono), monospace',
-                    }}>
-                      <span>🤖</span> {msg.model}
-                    </div>
-                  )}
-                </div>
-              ))}
-              {isLoading && (
-                <div style={{
-                  alignSelf: 'flex-start',
-                  padding: '1rem 1.35rem',
-                  borderRadius: '18px 18px 18px 4px',
-                  background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.035)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.4rem',
-                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
-                }}>
-                  <div className="dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', animation: 'dot-pulse 1.2s infinite ease-in-out', animationDelay: '0s' }} />
-                  <div className="dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', animation: 'dot-pulse 1.2s infinite ease-in-out', animationDelay: '0.2s' }} />
-                  <div className="dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', animation: 'dot-pulse 1.2s infinite ease-in-out', animationDelay: '0.4s' }} />
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'projects' && (
+          <ProjectsView isDark={isDark} router={router} />
+        )}
+
+        {activeTab === 'imagine' && (
+          <ImagineView isDark={isDark} />
+        )}
+
+        {activeTab === 'artifacts' && (
+          <ArtifactsView isDark={isDark} />
+        )}
 
         {/* Input Bar Wrapper */}
         <div style={{
@@ -918,7 +1013,14 @@ export default function ChatPage() {
                 return (
                   <button
                     key={mode.id}
-                    onClick={() => setActiveMode(mode.id)}
+                    onClick={() => {
+                      setActiveMode(mode.id);
+                      if (mode.id === 'code') {
+                        setSelectedModel('minimax/minimax-m2.5');
+                      } else {
+                        setSelectedModel('deepseek/deepseek-v4-flash');
+                      }
+                    }}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -1273,6 +1375,33 @@ export default function ChatPage() {
                     {messages.filter(m => m.role === 'user').length} / 50 messages used
                   </span>
                 </div>
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('jarvis_user');
+                    router.push('/');
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    borderRadius: '12px',
+                    border: '1px solid #ef4444',
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    color: '#f87171',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
+                    marginTop: '0.5rem',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
+                  }}
+                >
+                  Sign Out
+                </button>
               </div>
             </div>
           </div>
