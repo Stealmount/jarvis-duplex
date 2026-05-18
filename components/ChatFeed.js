@@ -65,8 +65,8 @@ export default function ChatFeed({ messages, mode, streamingText, streamingModel
     return (
       <div className="chat-feed" ref={feedRef}>
         <div className="chat-empty">
-          <div className="chat-empty-title">Kya baat hai?</div>
-          <div className="chat-empty-sub">Start speaking or type below</div>
+          <div className="chat-empty-title" style={{ opacity: 0.15, fontFamily: 'var(--font-display)', letterSpacing: '0.1em' }}>JARVIS</div>
+          <div className="chat-empty-sub">Start a conversation</div>
         </div>
       </div>
     );
