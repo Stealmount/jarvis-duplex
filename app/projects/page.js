@@ -79,13 +79,32 @@ export default function ProjectsPage() {
       <div className="page-layout" style={{ flex: 1, overflowY: 'auto', padding: '40px 24px', maxWidth: '800px', width: '100%', margin: '0 auto' }}>
         <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
           <h1 className="page-title" style={{ fontFamily: 'var(--font-sans)', fontSize: '28px', fontWeight: 500, color: 'var(--text-1)' }}>Projects</h1>
-          <button
-            className="auth-btn auth-btn--primary"
-            onClick={createProject}
-            style={{ width: 'auto', padding: '10px 16px', borderRadius: '10px', fontSize: '13px' }}
-          >
-            + New Project
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-3)', fontSize: '13px' }}>
+              <span>Sort by</span>
+              <button style={{ background: 'var(--raised)', border: 'none', color: 'var(--text-1)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '4px 8px', borderRadius: '4px' }}>
+                Activity ▾
+              </button>
+            </div>
+            <button
+              className="auth-btn auth-btn--primary"
+              onClick={createProject}
+              style={{ width: 'auto', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', background: 'var(--text-1)', color: 'var(--bg)', border: 'none', fontWeight: 500 }}
+            >
+              New project
+            </button>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '48px', position: 'relative' }}>
+          <div style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-3)' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+          <input 
+            type="text" 
+            placeholder="Search projects..." 
+            style={{ width: '100%', padding: '12px 16px 12px 40px', background: 'var(--raised)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text-1)', fontSize: '14px', outline: 'none' }}
+          />
         </div>
 
         {projects.length === 0 ? (
@@ -94,26 +113,34 @@ export default function ProjectsPage() {
             style={{
               textAlign: 'center',
               padding: '64px 24px',
-              background: 'var(--raised)',
-              border: '1px solid var(--border)',
-              borderRadius: '16px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               gap: '16px',
             }}
           >
-            <div style={{ fontSize: '32px' }}>📁</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <p style={{ margin: 0, fontWeight: 500, color: 'var(--text-1)', fontSize: '15px' }}>No projects yet.</p>
-              <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '13px' }}>Group related conversations into projects.</p>
+            <div style={{ marginBottom: '8px' }}>
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-1)' }}>
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+                <path d="M14 14h7v7h-7z" />
+                <path d="M16 11v6" />
+                <path d="M13 14h6" />
+              </svg>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <h2 style={{ margin: 0, fontWeight: 500, color: 'var(--text-1)', fontSize: '20px' }}>Looking to start a project?</h2>
+              <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '14px', maxWidth: '400px', lineHeight: 1.5 }}>
+                Upload materials, set custom instructions, and organize conversations in one space.
+              </p>
             </div>
             <button
               className="auth-btn auth-btn--secondary"
               onClick={createProject}
-              style={{ width: 'auto', padding: '8px 14px', fontSize: '13px', borderRadius: '10px', marginTop: '8px' }}
+              style={{ width: 'auto', padding: '8px 16px', fontSize: '13px', borderRadius: '8px', marginTop: '16px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-1)', display: 'flex', gap: '8px', alignItems: 'center' }}
             >
-              Create your first project
+              <span>+</span> New project
             </button>
           </div>
         ) : (

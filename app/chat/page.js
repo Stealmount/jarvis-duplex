@@ -2,45 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import ParticleBackground from '@/components/ParticleBackground';
+import { initDuplex, stopDuplex } from '@/lib/duplex';
 
-// ─── MODELS DATA ───
 const MODELS = [
-  // NVIDIA
-  { id: 'nvidia/nemotron-3-super', name: 'Nemotron 3 Super', provider: 'NVIDIA', category: 'general', description: 'State-of-the-art reasoning & coding', free: true },
-  { id: 'nvidia/nemotron-3-nano-30b-a3b', name: 'Nemotron 3 Nano 30B A3B', provider: 'NVIDIA', category: 'coding', description: 'Efficient coding assistant', free: true },
-  { id: 'nvidia/nemotron-3-nano-omni', name: 'Nemotron 3 Nano Omni', provider: 'NVIDIA', category: 'general', description: 'Multimodal understanding', free: true },
-  { id: 'nvidia/nemotron-nano-9b-v2', name: 'Nemotron Nano 9B V2', provider: 'NVIDIA', category: 'coding', description: 'Lightweight code generation', free: true },
-  { id: 'nvidia/nemotron-nano-12b-2-vl', name: 'Nemotron Nano 12B 2 VL', provider: 'NVIDIA', category: 'general', description: 'Vision-language model', free: true },
-  { id: 'nvidia/llama-nemotron-embed-vl-1b-v2', name: 'Llama Nemotron Embed VL 1B V2', provider: 'NVIDIA', category: 'general', description: 'Embedding & retrieval', free: true },
-  // Poolside
-  { id: 'poolside/laguna-m1', name: 'Laguna M.1', provider: 'Poolside', category: 'coding', description: 'Advanced code synthesis', free: true },
-  { id: 'poolside/laguna-xs2', name: 'Laguna XS.2', provider: 'Poolside', category: 'coding', description: 'Fast code completion', free: true },
-  // OpenAI
-  { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B', provider: 'OpenAI', category: 'reasoning', description: 'Deep reasoning & analysis', free: true },
-  { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B', provider: 'OpenAI', category: 'general', description: 'Balanced performance', free: true },
-  // Z.ai
-  { id: 'z-ai/glm-4.5-air', name: 'GLM 4.5 Air', provider: 'Z.ai', category: 'general', description: 'Fast general-purpose', free: true },
-  // DeepSeek
-  { id: 'deepseek/deepseek-v4-flash', name: 'DeepSeek V4 Flash', provider: 'DeepSeek', category: 'coding', description: 'Lightning-fast inference', free: true },
-  // MiniMax
-  { id: 'minimax/minimax-m2.5', name: 'MiniMax M2.5', provider: 'MiniMax', category: 'creative', description: 'Creative writing & chat', free: true },
-  // Arcee AI
-  { id: 'arcee/trinity-large-thinking', name: 'Trinity Large Thinking', provider: 'Arcee AI', category: 'reasoning', description: 'Deep chain-of-thought', free: true },
-  // Baidu
-  { id: 'baidu/cobuddy', name: 'CoBuddy', provider: 'Baidu Qianfan', category: 'general', description: 'Chinese-English bilingual', free: true },
-  // Google
-  { id: 'google/gemma-4-31b', name: 'Gemma 4 31B', provider: 'Google', category: 'general', description: 'Open-weight powerhouse', free: true },
-  // Additional strong models
-  { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4', provider: 'Anthropic', category: 'reasoning', description: 'Best-in-class reasoning', free: false },
-  { id: 'anthropic/claude-opus-4', name: 'Claude Opus 4', provider: 'Anthropic', category: 'coding', description: 'Elite coding & analysis', free: false },
-  { id: 'openai/gpt-4.1', name: 'GPT-4.1', provider: 'OpenAI', category: 'general', description: 'Latest GPT model', free: false },
-  { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google', category: 'general', description: 'Google\'s best model', free: false },
-  { id: 'x-ai/grok-3', name: 'Grok 3', provider: 'xAI', category: 'general', description: 'Real-time knowledge', free: false },
-  { id: 'deepseek/deepseek-v3', name: 'DeepSeek V3', provider: 'DeepSeek', category: 'coding', description: 'Top-tier code model', free: false },
-  { id: 'meta/llama-4-maverick', name: 'Llama 4 Maverick', provider: 'Meta', category: 'general', description: 'Open-source leader', free: false },
-  { id: 'qwen/qwen3-235b', name: 'Qwen3 235B', provider: 'Alibaba', category: 'coding', description: 'Massive coding model', free: false },
-  { id: 'mistral/mistral-large-3', name: 'Mistral Large 3', provider: 'Mistral', category: 'general', description: 'European excellence', free: false },
-  { id: 'cohere/command-r-plus', name: 'Command R+', provider: 'Cohere', category: 'general', description: 'Enterprise-ready', free: false },
+  { id: 'deepseek/deepseek-v4-flash', name: 'DeepSeek V4 Flash', provider: 'DeepSeek', category: 'general', description: 'Lightning-fast inference', free: true },
+  { id: 'minimax/minimax-m2.5', name: 'MiniMax M2.5', provider: 'MiniMax', category: 'coding', description: 'Creative writing & chat', free: true },
 ];
 
 const CATEGORIES = [
@@ -60,19 +27,18 @@ export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('nvidia/nemotron-3-super');
+  const [selectedModel, setSelectedModel] = useState('deepseek/deepseek-v4-flash');
   const [activeCategory, setActiveCategory] = useState('all');
   
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversations, setConversations] = useState([]);
-  
-  // Voice, API keys, etc.
+  const [attachedFiles, setAttachedFiles] = useState([]);
+  const [activeMode, setActiveMode] = useState('general');
+  const fileInputRef = useRef(null);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceGender, setVoiceGender] = useState('female');
-  const [apiKey, setApiKey] = useState('');
-  const [showApiKey, setShowApiKey] = useState(false);
   
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -98,9 +64,6 @@ export default function ChatPage() {
 
     const savedVoiceGender = localStorage.getItem('jarvis_voice_gender') || 'female';
     setVoiceGender(savedVoiceGender);
-
-    const savedApiKey = localStorage.getItem('openrouter_api_key') || '';
-    setApiKey(savedApiKey);
 
     // Retrieve conversation history
     const savedConversations = localStorage.getItem('jarvis_conversations');
@@ -142,25 +105,41 @@ export default function ChatPage() {
     }
   }, [input]);
 
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAttachedFiles([...attachedFiles, { fileName: file.name, file }]);
+    }
+    e.target.value = '';
+  };
+
+  const removeFile = (index) => {
+    setAttachedFiles(attachedFiles.filter((_, i) => i !== index));
+  };
+
   const selectedModelData = MODELS.find(m => m.id === selectedModel);
 
   const filteredModels = activeCategory === 'all'
     ? MODELS
     : MODELS.filter(m => m.category === activeCategory);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const handleSendRef = useRef();
+
+  const handleSend = async (overrideText = null) => {
+    const textToSend = typeof overrideText === 'string' ? overrideText : input;
+    if ((!textToSend.trim() && attachedFiles.length === 0) || isLoading) return;
 
     const userMsg = {
       id: Date.now().toString(),
       role: 'user',
-      content: input.trim(),
+      content: textToSend.trim(),
       timestamp: new Date().toISOString(),
     };
 
     const currentMessages = [...messages, userMsg];
     setMessages(currentMessages);
-    setInput('');
+    if (!overrideText || typeof overrideText !== 'string') setInput('');
+    setAttachedFiles([]);
     setIsLoading(true);
 
     try {
@@ -173,7 +152,6 @@ export default function ChatPage() {
             content: m.content,
           })),
           model: selectedModel,
-          apiKey: apiKey || undefined,
         }),
       });
 
@@ -237,10 +215,56 @@ export default function ChatPage() {
         timestamp: new Date().toISOString(),
       };
       setMessages(prev => [...prev, errorMsg]);
-    } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    handleSendRef.current = handleSend;
+  });
+
+  useEffect(() => {
+    if (voiceEnabled) {
+      initDuplex({
+        onSpeechStart: () => {
+          console.log('[Duplex] Speech started');
+        },
+        onSpeechEnd: async (audio) => {
+          if (typeof audio === 'string') {
+            if (audio.trim() && handleSendRef.current) handleSendRef.current(audio.trim());
+          } else if (audio instanceof Float32Array) {
+            try {
+              const wavBlob = float32ToWav(audio, 16000);
+              const fd = new FormData();
+              fd.append('file', wavBlob, 'voice.wav');
+              const res = await fetch('/api/upload', {
+                method: 'POST',
+                body: fd,
+              });
+              if (res.ok) {
+                const data = await res.json();
+                if (data.extractedText && handleSendRef.current) {
+                  handleSendRef.current(data.extractedText);
+                }
+              }
+            } catch (err) {
+              console.error('Failed to process duplex audio:', err);
+            }
+          }
+        },
+        onVADMisfire: () => console.log('[Duplex] VAD misfire'),
+        onError: (err) => {
+          console.error('[Duplex] Error:', err);
+          setVoiceEnabled(false);
+        },
+      });
+    } else {
+      stopDuplex();
+    }
+    return () => {
+      stopDuplex();
+    };
+  }, [voiceEnabled]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -269,11 +293,6 @@ export default function ChatPage() {
     setIsDark(!isDark);
     document.documentElement.setAttribute('data-theme', nextTheme);
     localStorage.setItem('jarvis_theme', nextTheme);
-  };
-
-  const handleApiKeySave = (val) => {
-    setApiKey(val);
-    localStorage.setItem('openrouter_api_key', val);
   };
 
   const handleVoiceGenderChange = (val) => {
@@ -314,6 +333,9 @@ export default function ChatPage() {
         zIndex: 1,
       }}
     >
+      <div style={{ position: 'absolute', inset: 0, zIndex: -1, opacity: 0.4, pointerEvents: 'none' }}>
+        <ParticleBackground />
+      </div>
       {/* ─── SIDEBAR ─── */}
       <aside
         style={{
@@ -514,7 +536,27 @@ export default function ChatPage() {
               gap: '0.35rem',
             }}
           >
-            🎙️ Voice {voiceEnabled ? 'On' : 'Off'}
+            🎙️ Voice
+          </button>
+          <button
+            onClick={handleThemeChange}
+            style={{
+              flex: 1,
+              padding: '0.6rem',
+              borderRadius: '10px',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+              background: 'transparent',
+              color: 'inherit',
+              cursor: 'pointer',
+              fontSize: '0.82rem',
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.35rem',
+            }}
+          >
+            {isDark ? '☀️ Light' : '🌙 Dark'}
           </button>
         </div>
       </aside>
@@ -749,62 +791,154 @@ export default function ChatPage() {
             maxWidth: '800px',
             margin: '0 auto',
             display: 'flex',
-            alignItems: 'flex-end',
-            gap: '0.85rem',
-            padding: '0.6rem 0.85rem',
-            borderRadius: '16px',
-            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
-            background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+            flexDirection: 'column',
+            gap: '12px'
           }}>
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Or just start typing below..."
-              rows={1}
-              style={{
-                flex: 1,
-                background: 'none',
-                border: 'none',
-                color: 'inherit',
-                fontSize: '0.96rem',
-                resize: 'none',
-                outline: 'none',
-                padding: '0.5rem 0.25rem',
-                maxHeight: '130px',
-                fontFamily: 'inherit',
-                lineHeight: 1.5,
-              }}
-            />
-            <button
-              onClick={handleSend}
-              disabled={!input.trim() || isLoading}
-              style={{
-                padding: '0.65rem 1.25rem',
-                borderRadius: '12px',
-                border: 'none',
-                background: input.trim() && !isLoading
-                  ? 'linear-gradient(135deg, #2563eb, #7c3aed)'
-                  : isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
-                color: input.trim() && !isLoading ? '#ffffff' : isDark ? '#71717a' : '#a1a1aa',
-                cursor: input.trim() && !isLoading ? 'pointer' : 'not-allowed',
-                fontSize: '0.9rem',
-                fontWeight: 600,
-                transition: 'all 0.2s',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {isLoading ? 'Sending...' : 'Send'}
-            </button>
-          </div>
-          <div style={{
-            textAlign: 'center',
-            fontSize: '0.72rem',
-            opacity: 0.35,
-            marginTop: '0.5rem',
-          }}>
-            Press Enter to send, Shift+Enter for new line
+            {/* Attached Files Display */}
+            {attachedFiles.length > 0 && (
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', padding: '0 8px' }}>
+                {attachedFiles.map((f, i) => (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px',
+                    borderRadius: '12px', fontSize: '0.8rem',
+                    background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`
+                  }}>
+                    <span>📎 {f.fileName}</span>
+                    <button onClick={() => removeFile(i)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.6, padding: '0 2px' }}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.85rem',
+              padding: '0.6rem 0.85rem',
+              borderRadius: '24px',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+              background: isDark ? '#232323' : '#e0e0e0',
+              color: isDark ? '#e0e0e0' : '#1a1a1a'
+            }}>
+              <input type="file" ref={fileInputRef} onChange={handleFileSelect} style={{ display: 'none' }} />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'inherit',
+                  fontSize: '1.4rem',
+                  cursor: 'pointer',
+                  padding: '0.25rem',
+                  opacity: 0.7,
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                +
+              </button>
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Type / for skills"
+                rows={1}
+                style={{
+                  flex: 1,
+                  background: 'none',
+                  border: 'none',
+                  color: 'inherit',
+                  fontSize: '1.05rem',
+                  resize: 'none',
+                  outline: 'none',
+                  padding: '0.5rem 0.25rem',
+                  maxHeight: '130px',
+                  fontFamily: 'inherit',
+                  lineHeight: 1.5,
+                }}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <select
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'inherit',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    opacity: 0.8,
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    paddingRight: '12px',
+                    fontFamily: 'inherit',
+                    fontWeight: 500
+                  }}
+                >
+                  {MODELS.map(m => (
+                    <option key={m.id} value={m.id} style={{ color: isDark ? '#000' : '#000' }}>
+                      {m.name} ▾
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => setVoiceEnabled(!voiceEnabled)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: voiceEnabled ? '#60a5fa' : 'inherit',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    opacity: voiceEnabled ? 1 : 0.7,
+                  }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="6" y1="9" x2="6" y2="15"></line>
+                    <line x1="10" y1="5" x2="10" y2="19"></line>
+                    <line x1="14" y1="8" x2="14" y2="16"></line>
+                    <line x1="18" y1="11" x2="18" y2="13"></line>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Modes Section */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              {[
+                { id: 'code', label: 'Code', icon: '</>' },
+                { id: 'deep', label: 'Deep-Think', icon: '◈' },
+                { id: 'study', label: 'Study', icon: '🎓' },
+                { id: 'therapy', label: 'Therapy', icon: '☕' },
+              ].map(mode => {
+                const isActive = activeMode === mode.id;
+                return (
+                  <button
+                    key={mode.id}
+                    onClick={() => setActiveMode(mode.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 14px',
+                      borderRadius: '20px',
+                      border: `1px solid ${isDark ? (isActive ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)') : (isActive ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.1)')}`,
+                      background: isActive ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)') : 'transparent',
+                      color: isDark ? '#e0e0e0' : '#1a1a1a',
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      fontWeight: isActive ? 600 : 500,
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <span style={{ fontSize: '1rem', opacity: isActive ? 1 : 0.8 }}>{mode.icon}</span> {mode.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </main>
@@ -873,58 +1007,7 @@ export default function ChatPage() {
               </button>
             </div>
 
-            {/* API Key */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <label style={{
-                fontSize: '0.72rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.12em',
-                color: isDark ? '#71717a' : '#a1a1aa',
-                fontWeight: 600,
-              }}>
-                OpenRouter API Key
-              </label>
-              <div style={{
-                display: 'flex',
-                gap: '0.5rem',
-                padding: '0.75rem 1rem',
-                borderRadius: '12px',
-                border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
-                background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
-              }}>
-                <input
-                  type={showApiKey ? 'text' : 'password'}
-                  value={apiKey}
-                  onChange={e => handleApiKeySave(e.target.value)}
-                  placeholder="sk-or-v1-..."
-                  style={{
-                    flex: 1,
-                    background: 'none',
-                    border: 'none',
-                    color: 'inherit',
-                    fontSize: '0.9rem',
-                    outline: 'none',
-                    fontFamily: 'monospace',
-                  }}
-                />
-                <button
-                  onClick={() => setShowApiKey(!showApiKey)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'inherit',
-                    cursor: 'pointer',
-                    opacity: 0.5,
-                    fontSize: '0.9rem',
-                  }}
-                >
-                  {showApiKey ? '🙈' : '👁️'}
-                </button>
-              </div>
-              <p style={{ fontSize: '0.75rem', opacity: 0.45, margin: 0 }}>
-                Your key is stored securely in your browser. Free models work out-of-the-box.
-              </p>
-            </div>
+            {/* Settings Body */}
 
             {/* Model Selector */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
@@ -1205,4 +1288,36 @@ export default function ChatPage() {
       `}</style>
     </div>
   );
+}
+
+// Helper: Float32 PCM to WAV Blob
+function float32ToWav(float32, sampleRate = 16000) {
+  const length = float32.length;
+  const buffer = new ArrayBuffer(44 + length * 2);
+  const view = new DataView(buffer);
+
+  function writeString(offset, str) {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  }
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + length * 2, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, 'data');
+  view.setUint32(40, length * 2, true);
+
+  for (let i = 0; i < length; i++) {
+    const s = Math.max(-1, Math.min(1, float32[i]));
+    view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+  }
+
+  return new Blob([buffer], { type: 'audio/wav' });
 }

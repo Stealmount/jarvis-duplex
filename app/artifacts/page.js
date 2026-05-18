@@ -60,29 +60,66 @@ export default function ArtifactsPage() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--bg)' }}>
       <TopNav status="idle" onToggleSidebar={() => {}} onTogglePanel={() => {}} />
       <div className="page-layout" style={{ flex: 1, overflowY: 'auto', padding: '40px 24px', maxWidth: '1000px', width: '100%', margin: '0 auto' }}>
-        <div className="page-header" style={{ marginBottom: '24px' }}>
+        <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
           <h1 className="page-title" style={{ fontFamily: 'var(--font-sans)', fontSize: '28px', fontWeight: 500, color: 'var(--text-1)', margin: 0 }}>Artifacts</h1>
+          <button
+            className="auth-btn auth-btn--primary"
+            style={{ width: 'auto', padding: '10px 16px', borderRadius: '8px', fontSize: '13px', background: 'var(--text-1)', color: 'var(--bg)', border: 'none', fontWeight: 500 }}
+          >
+            New artifact
+          </button>
         </div>
 
         {/* Tabs */}
-        <div className="artifacts-tabs" style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '24px' }}>
-          {['All', 'Code', 'Images', 'Documents'].map(tab => (
-            <button
-              key={tab}
-              className={`preset-pill ${activeTab === tab ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab)}
-              style={{ fontSize: '12px', padding: '6px 12px' }}
-            >
-              {tab}
-            </button>
-          ))}
+        <div className="artifacts-tabs" style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '12px', marginBottom: '48px' }}>
+          <button
+            className="preset-pill active"
+            style={{ fontSize: '13px', padding: '6px 0', background: 'none', border: 'none', color: 'var(--text-1)', fontWeight: 500, borderRadius: 0, borderBottom: '2px solid var(--text-1)' }}
+          >
+            Your artifacts
+          </button>
         </div>
 
         {/* Grid */}
         {filteredArtifacts.length === 0 ? (
-          <div className="empty-state" style={{ textAlign: 'center', padding: '64px 24px', background: 'var(--raised)', border: '1px solid var(--border)', borderRadius: '16px' }}>
-            <p style={{ margin: 0, fontWeight: 500, color: 'var(--text-1)', fontSize: '15px' }}>No artifacts found.</p>
-            <p style={{ margin: '4px 0 0 0', color: 'var(--text-3)', fontSize: '13px' }}>Artifacts are saved code blocks, images, or documents generated during chats.</p>
+          <div>
+            <h2 style={{ fontSize: '18px', fontWeight: 500, color: 'var(--text-1)', marginBottom: '16px' }}>Let's get cooking! Pick an artifact category or start building your idea from scratch.</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
+              {[
+                { label: 'Apps and websites', icon: '📱' },
+                { label: 'Documents and templates', icon: '📄' },
+                { label: 'Games', icon: '🎮' },
+                { label: 'Productivity tools', icon: '⚡' },
+                { label: 'Creative projects', icon: '🎨' },
+                { label: 'Quiz or survey', icon: '📝' },
+                { label: 'Start from scratch', icon: '➕' },
+              ].map(cat => (
+                <button
+                  key={cat.label}
+                  style={{
+                    background: 'var(--raised)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    justifyContent: 'space-between',
+                    minHeight: '120px',
+                    cursor: 'pointer',
+                    color: 'var(--text-1)',
+                    fontSize: '15px',
+                    fontWeight: 500,
+                    textAlign: 'left',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--text-3)'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+                >
+                  <span>{cat.label}</span>
+                  <span style={{ fontSize: '18px', opacity: 0.7, alignSelf: 'flex-end' }}>{cat.icon}</span>
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="artifacts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>

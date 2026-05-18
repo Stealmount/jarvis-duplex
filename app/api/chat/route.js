@@ -28,34 +28,51 @@ export async function POST(req) {
       });
     }
 
-    // Use provided API key or fallback to env variable
-    const key = apiKey || process.env.OPENROUTER_API_KEY;
+    // Route based on model
+    let apiUrl = '';
+    let headers = {};
+    let payload = {};
 
-    if (!key) {
-      return NextResponse.json(
-        { error: 'OpenRouter API key is required. Add it in Settings or set OPENROUTER_API_KEY env variable.' },
-        { status: 401 }
-      );
-    }
-
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
+    if (model && model.includes('minimax')) {
+      const key = process.env.MINIMAX_API_KEY;
+      const groupId = process.env.MINIMAX_GROUP_ID || '';
+      if (!key) return NextResponse.json({ error: 'MiniMax API key missing in .env' }, { status: 401 });
+      
+      apiUrl = `https://api.minimax.chat/v1/text/chatcompletion_v2?GroupId=${groupId}`;
+      headers = {
         'Authorization': `Bearer ${key}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://jarvis-duplex.vercel.app',
-        'X-Title': 'JARVIS AI',
-      },
-      body: JSON.stringify({
-        model: model || 'nvidia/nemotron-3-super',
-        messages: messages.map((m) => ({
-          role: m.role,
-          content: m.content,
-        })),
-        temperature: 0.7,
-        max_tokens: 4096,
+      };
+      payload = {
+        model: model.replace('minimax/', ''),
+        messages: messages.map((m) => ({ role: m.role, content: m.content })),
         stream: false,
-      }),
+        max_tokens: 4096,
+        temperature: 0.7,
+      };
+    } else {
+      // Default to DeepSeek
+      const key = process.env.DEEPSEEK_API_KEY;
+      if (!key) return NextResponse.json({ error: 'DeepSeek API key missing in .env' }, { status: 401 });
+      
+      apiUrl = 'https://api.deepseek.com/chat/completions';
+      headers = {
+        'Authorization': `Bearer ${key}`,
+        'Content-Type': 'application/json',
+      };
+      payload = {
+        model: model ? model.replace('deepseek/', '') : 'deepseek-chat',
+        messages: messages.map((m) => ({ role: m.role, content: m.content })),
+        stream: false,
+        max_tokens: 4096,
+        temperature: 0.7,
+      };
+    }
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
@@ -70,7 +87,7 @@ export async function POST(req) {
 
     return NextResponse.json({
       content: data.choices?.[0]?.message?.content || 'No response from model.',
-      model: data.model,
+      model: model,
       usage: data.usage,
     });
 
