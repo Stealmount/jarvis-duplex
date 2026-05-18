@@ -27,9 +27,27 @@ export default function InputBar({ onSend, onFileSelect, attachments, onRemoveAt
     return () => document.removeEventListener('mousedown', h);
   }, []);
 
-  const autoGrow = () => {
-    const el = textareaRef.current;
-    if (el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 144) + 'px'; }
+  // Prevent viewport shift when keyboard opens
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+
+    const handleResize = () => {
+      const keyboardHeight = window.innerHeight - window.visualViewport.height;
+      const inputArea = document.getElementById('input-bar-area') || document.getElementById('input-bar');
+      if (inputArea) {
+        inputArea.style.bottom = keyboardHeight + 'px';
+      }
+    };
+
+    window.visualViewport.addEventListener('resize', handleResize);
+    return () => window.visualViewport.removeEventListener('resize', handleResize);
+  }, []);
+
+  const handleInputChange = (e) => {
+    const el = e.target;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    setText(el.value);
   };
 
   const handleKeyDown = (e) => {
@@ -57,7 +75,7 @@ export default function InputBar({ onSend, onFileSelect, attachments, onRemoveAt
   };
 
   return (
-    <div className="input-bar-wrapper" id="input-bar">
+    <div className="input-bar-area" id="input-bar-area">
       {attachments.length > 0 && (
         <div className="attachment-strip">
           {attachments.map((a, i) => (
@@ -70,7 +88,7 @@ export default function InputBar({ onSend, onFileSelect, attachments, onRemoveAt
       )}
       <div className="input-bar">
         <div style={{ position: 'relative' }} ref={menuRef}>
-          <button className="attach-btn" onClick={() => setMenuOpen(!menuOpen)} title="Attach file" id="attach-btn">📎</button>
+          <button className="input-btn attach-btn" onClick={() => setMenuOpen(!menuOpen)} title="Attach file" id="attach-btn">📎</button>
           <div className={`attach-menu ${menuOpen ? 'open' : ''}`}>
             {FILE_TYPES.map((ft, i) => {
               const supported = !ft.capability || caps.includes(ft.capability);
@@ -98,17 +116,17 @@ export default function InputBar({ onSend, onFileSelect, attachments, onRemoveAt
         </div>
         <textarea
           ref={textareaRef}
-          className="chat-input"
+          className="input-textarea"
           placeholder="Message JARVIS..."
           rows={1}
           value={text}
-          onChange={(e) => { setText(e.target.value); autoGrow(); }}
+          onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           id="chat-input"
         />
         {!isDuplex && (
           <button
-            className="mic-btn"
+            className="input-btn mic-btn"
             onPointerDown={onPTTStart}
             onPointerUp={onPTTEnd}
             onPointerLeave={onPTTEnd}
@@ -118,7 +136,7 @@ export default function InputBar({ onSend, onFileSelect, attachments, onRemoveAt
             🎤
           </button>
         )}
-        <button className="send-btn" onClick={handleSend} disabled={isLoading || (!text.trim() && attachments.length === 0)} id="send-btn">
+        <button className="input-btn send-btn" onClick={handleSend} disabled={isLoading || (!text.trim() && attachments.length === 0)} id="send-btn">
           ➤
         </button>
       </div>

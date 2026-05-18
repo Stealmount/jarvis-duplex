@@ -12,6 +12,7 @@ import GreetingScreen from '@/components/GreetingScreen';
 import ModeSwitchBanner from '@/components/ModeSwitchBanner';
 import ActiveModelPanel from '@/components/ActiveModelPanel';
 import SearchModal from '@/components/SearchModal';
+import SettingsModal from '@/components/SettingsModal';
 import { splitIntoSentences, getPauseAfterSentence, getThinkingPause } from '@/lib/tts-pacing';
 import { getThinkingDelay, TOKEN_DISPLAY_DELAY_MS } from '@/lib/pacing';
 import { stopDuplex } from '@/lib/duplex';
@@ -790,6 +791,14 @@ export default function ChatPage() {
           onSelectThread={(id) => { selectThread(id); setMobileSidebarOpen(false); }}
         />
       )}
+      <SettingsModal
+        isOpen={panelOpen}
+        onClose={() => setPanelOpen(false)}
+        voiceGender={voiceGender}
+        onVoiceGenderChange={handleVoiceGenderChange}
+        usage={usage}
+        userInfo={userInfo}
+      />
     </>
   );
 }
