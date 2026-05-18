@@ -9,13 +9,12 @@ import InputBar from '@/components/InputBar';
 import ModeSelector from '@/components/ModeSelector';
 import ModelPicker from '@/components/ModelPicker';
 import VoiceOrb from '@/components/VoiceOrb';
+import GreetingScreen from '@/components/GreetingScreen';
 import { splitIntoSentences, getPauseAfterSentence, getThinkingPause } from '@/lib/tts-pacing';
 import { stopDuplex } from '@/lib/duplex';
 import { getLocalThreads, setLocalThreads, saveMessageToLocal, deleteLocalThread, setLocalCurrentThreadId } from '@/lib/storage';
 import { buildContextWindow } from '@/lib/context';
 import { initElevenLabsDuplex, getElevenLabsInstance, destroyElevenLabsDuplex } from '@/lib/elevenlabs-duplex';
-
-const Cursor = dynamic(() => import('@/components/Cursor'), { ssr: false });
 
 // Full model catalog — synced with lib/providers/router.js
 const ALL_MODELS = [
@@ -710,51 +709,60 @@ export default function ChatPage() {
     localStorage.setItem('jarvis_voice_gender', gender);
   }, []);
 
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
   return (
     <>
-      <Cursor />
-      <TopNav
-        status={voiceState}
-        usage={usage}
-        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-        onTogglePanel={() => setPanelOpen(!panelOpen)}
-        userInfo={userInfo}
-        streamingModel={streamingModel}
-      />
       <div className="app-layout">
         {(sidebarOpen || panelOpen) && (
-          <div className={`drawer-overlay show`} onClick={() => { setSidebarOpen(false); setPanelOpen(false); }} />
+          <div className={`drawer-overlay show`} onClick={() => { setSidebarOpen(false); setPanelOpen(false); setMobileSidebarOpen(false); }} />
         )}
         <Sidebar
           threads={threads}
           activeThreadId={activeThreadId}
-          onSelectThread={selectThread}
-          onNewThread={createThread}
+          onSelectThread={(id) => { selectThread(id); setMobileSidebarOpen(false); }}
+          onNewThread={() => { createThread(); setMobileSidebarOpen(false); }}
           onDeleteThread={deleteThread}
           isDuplex={isDuplex}
           onToggleDuplex={toggleDuplex}
-          isOpen={sidebarOpen}
+          isOpen={mobileSidebarOpen}
           voiceGender={voiceGender}
           onVoiceGenderChange={handleVoiceGenderChange}
           onDuplexStateChange={handleDuplexStateChange}
+          userInfo={userInfo}
+          onTogglePanel={() => setPanelOpen(!panelOpen)}
         />
-        <div className="chat-area">
-          <ChatFeed messages={messages} mode={mode} streamingText={streamingText} streamingModel={streamingModel} isThinking={isLoading && !streamingText} />
-          <InputBar
-            onSend={sendMessage}
-            onFileSelect={handleFileSelect}
-            attachments={attachments}
-            onRemoveAttachment={(i) => setAttachments(prev => prev.filter((_, j) => j !== i))}
-            isDuplex={isDuplex}
-            isLoading={isLoading}
-            onPTTStart={handlePTTStart}
-            onPTTEnd={handlePTTEnd}
-            currentModelCapabilities={(() => {
-              const m = selectedModelId ? ALL_MODELS.find(m => m.id === selectedModelId) : null;
-              return m?.capabilities || ['text'];
-            })()}
-            onShowToast={showToast}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <TopNav
+            status={voiceState}
+            usage={usage}
+            onToggleSidebar={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+            onTogglePanel={() => setPanelOpen(!panelOpen)}
+            userInfo={userInfo}
+            streamingModel={streamingModel}
           />
+          <div className="chat-area">
+            {messages.length === 0 && !streamingText && !isLoading ? (
+              <GreetingScreen userInfo={userInfo} currentMode={mode} onPromptSelect={sendMessage} />
+            ) : (
+              <ChatFeed messages={messages} mode={mode} streamingText={streamingText} streamingModel={streamingModel} isThinking={isLoading && !streamingText} />
+            )}
+            <InputBar
+              onSend={sendMessage}
+              onFileSelect={handleFileSelect}
+              attachments={attachments}
+              onRemoveAttachment={(i) => setAttachments(prev => prev.filter((_, j) => j !== i))}
+              isDuplex={isDuplex}
+              isLoading={isLoading}
+              onPTTStart={handlePTTStart}
+              onPTTEnd={handlePTTEnd}
+              currentModelCapabilities={(() => {
+                const m = selectedModelId ? ALL_MODELS.find(m => m.id === selectedModelId) : null;
+                return m?.capabilities || ['text'];
+              })()}
+              onShowToast={showToast}
+            />
+          </div>
         </div>
         <aside className={`right-panel ${panelOpen ? 'open' : ''}`}>
           {isDuplex && <VoiceOrb state={voiceState} isDuplex={isDuplex} />}

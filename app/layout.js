@@ -45,7 +45,10 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${bebasNeue.variable} ${dmSans.variable} ${dmMono.variable} ${cormorant.variable}`}>
+    <html lang="en" data-theme="dark" className={`${bebasNeue.variable} ${dmSans.variable} ${dmMono.variable} ${cormorant.variable}`}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('jarvis_theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}` }} />
+      </head>
       <body>
         <SessionProvider>
           {children}
