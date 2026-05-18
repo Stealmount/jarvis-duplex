@@ -11,6 +11,7 @@ import VoiceOrb from '@/components/VoiceOrb';
 import GreetingScreen from '@/components/GreetingScreen';
 import ModeSwitchBanner from '@/components/ModeSwitchBanner';
 import ActiveModelPanel from '@/components/ActiveModelPanel';
+import SearchModal from '@/components/SearchModal';
 import { splitIntoSentences, getPauseAfterSentence, getThinkingPause } from '@/lib/tts-pacing';
 import { getThinkingDelay, TOKEN_DISPLAY_DELAY_MS } from '@/lib/pacing';
 import { stopDuplex } from '@/lib/duplex';
@@ -51,6 +52,7 @@ export default function ChatPage() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [isModeSelectorOpen, setIsModeSelectorOpen] = useState(false);
   const [modeSwitchWarning, setModeSwitchWarning] = useState(null);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   // Check auth on mount
   useEffect(() => {
@@ -678,6 +680,30 @@ export default function ChatPage() {
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
+  const handleNavAction = useCallback((action) => {
+    switch (action) {
+      case 'new_chat':
+        createThread();
+        setMobileSidebarOpen(false);
+        break;
+      case 'search':
+        setSearchOpen(true);
+        break;
+      case 'chats':
+        router.push('/chats');
+        break;
+      case 'projects':
+        router.push('/projects');
+        break;
+      case 'artifacts':
+        router.push('/artifacts');
+        break;
+      case 'imagine':
+        router.push('/imagine');
+        break;
+    }
+  }, [createThread, router]);
+
   return (
     <>
       <div className="app-shell">
@@ -696,6 +722,7 @@ export default function ChatPage() {
           onDuplexStateChange={handleDuplexStateChange}
           userInfo={userInfo}
           onTogglePanel={() => setPanelOpen(!panelOpen)}
+          onNavAction={handleNavAction}
         />
         <div className="main-area">
           <TopNav
@@ -757,6 +784,12 @@ export default function ChatPage() {
         />
       )}
       <div className={`toast ${toastMsg ? 'show' : ''}`}>{toastMsg}</div>
+      {searchOpen && (
+        <SearchModal
+          onClose={() => setSearchOpen(false)}
+          onSelectThread={(id) => { selectThread(id); setMobileSidebarOpen(false); }}
+        />
+      )}
     </>
   );
 }
