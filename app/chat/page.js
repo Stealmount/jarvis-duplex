@@ -93,6 +93,69 @@ const PlusIcon = ({ size = 14 }) => (
   </svg>
 );
 
+const DecisionIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <circle cx="12" cy="12" r="10" />
+    <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+  </svg>
+);
+
+const LearningIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+  </svg>
+);
+
+const WritingIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+  </svg>
+);
+
+const CodingIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <polyline points="16 18 22 12 16 6" />
+    <polyline points="8 6 2 12 8 18" />
+  </svg>
+);
+
+const ThinkingIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <circle cx="18" cy="5" r="3" />
+    <circle cx="6" cy="12" r="3" />
+    <circle cx="18" cy="19" r="3" />
+    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+  </svg>
+);
+
+const CreativeIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A5 5 0 0 0 8 8c0 1 .3 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+    <path d="M9 18h6M10 22h4" />
+  </svg>
+);
+
+const AttachmentIcon = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+  </svg>
+);
+
+const TherapyIcon = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+  </svg>
+);
+
+const SparklesIcon = ({ size = 12 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m11.314 11.314l.707-.707" />
+  </svg>
+);
+
 // ─── HIGH FIDELITY WAV ENCODER FOR DUPLEX VOICE ───
 function float32ToWav(float32Array, sampleRate = 16000) {
   const buffer = new ArrayBuffer(44 + float32Array.length * 2);
@@ -138,12 +201,11 @@ const MODELS = [
   { id: 'google/gemini-3-flash-preview', name: 'Gemini 3 Flash', provider: 'Google', category: 'general', description: 'Google\'s newest premium flagship preview', free: true },
   { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google', category: 'reasoning', description: 'Google\'s premium reasoning & coding model', free: false },
   { id: 'google/gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro (Preview)', provider: 'Google', category: 'reasoning', description: 'Google\'s absolute latest high-intelligence model', free: false },
-  { id: 'groq/llama-3.3-70b-versatile', name: 'Llama 3.3 70B (Groq)', provider: 'Groq', category: 'coding', description: 'Ultra-low latency open-weights powerhouse', free: true },
-  { id: 'openrouter/deepseek/deepseek-chat', name: 'DeepSeek V3 (OpenRouter)', provider: 'OpenRouter', category: 'general', description: 'DeepSeek flagship intelligence via OpenRouter', free: true },
-  { id: 'openrouter/deepseek/deepseek-r1', name: 'DeepSeek R1 (OpenRouter)', provider: 'OpenRouter', category: 'reasoning', description: 'Full reasoning chain-of-thought model', free: false },
-  { id: 'nvidia/deepseek/deepseek-r1', name: 'DeepSeek R1 (NVIDIA NIM)', provider: 'NVIDIA', category: 'reasoning', description: 'Nvidia-hosted elite reasoning model', free: false },
-  { id: 'nvidia/nvidia/llama-3.1-nemotron-70b-instruct', name: 'Nemotron 70B (NVIDIA NIM)', provider: 'NVIDIA', category: 'general', description: 'Nvidia\'s custom fine-tuned powerhouse', free: false },
-  { id: 'nvidia/meta/llama-3.3-70b-instruct', name: 'Llama 3.3 70B (NVIDIA NIM)', provider: 'NVIDIA', category: 'coding', description: 'Meta Llama 3.3 running on NIM hardware', free: false },
+  { id: 'groq/llama-3.3-70b-versatile', name: 'Llama 3.3 70B', provider: 'Groq', category: 'coding', description: 'Ultra-low latency open-weights powerhouse', free: true },
+  { id: 'openrouter/deepseek/deepseek-chat', name: 'DeepSeek V3', provider: 'OpenRouter', category: 'general', description: 'DeepSeek flagship intelligence', free: true },
+  { id: 'openrouter/deepseek/deepseek-r1', name: 'DeepSeek R1', provider: 'OpenRouter', category: 'reasoning', description: 'Full reasoning chain-of-thought model', free: false },
+  { id: 'openrouter/deepseek/deepseek-v4-flash', name: 'DeepSeek V4 Flash', provider: 'OpenRouter', category: 'general', description: 'DeepSeek\'s lightning-fast Mixture-of-Experts (MoE) reasoning model', free: true },
+  { id: 'nvidia/nvidia/llama-3.1-nemotron-70b-instruct', name: 'Nemotron 70B', provider: 'NVIDIA', category: 'general', description: 'Nvidia\'s custom fine-tuned powerhouse', free: false },
   { id: 'minimax/minimax-m2.5', name: 'MiniMax M2.5', provider: 'MiniMax', category: 'creative', description: 'MiniMax creative writing & dialogue specialist', free: true },
 ];
 
@@ -526,12 +588,12 @@ export default function ChatPage() {
   };
 
   const suggestedPrompts = [
-    { title: 'Help me think through a decision', subtitle: 'Decision support', icon: '🎯' },
-    { title: 'Explain something complex simply', subtitle: 'Learning', icon: '📚' },
-    { title: 'Review my writing', subtitle: 'Writing', icon: '✍️' },
-    { title: 'Help me debug this code', subtitle: 'Coding', icon: '💻' },
-    { title: 'Deep think on a problem', subtitle: 'Deep Think', icon: '🧠' },
-    { title: 'Generate creative ideas', subtitle: 'Creative', icon: '✨' },
+    { title: 'Help me think through a decision', subtitle: 'Decision support', icon: <DecisionIcon size={20} />, iconColor: 'var(--mode-deep, #7b8fff)' },
+    { title: 'Explain something complex simply', subtitle: 'Learning', icon: <LearningIcon size={20} />, iconColor: 'var(--mode-study, #f5c842)' },
+    { title: 'Review my writing', subtitle: 'Writing', icon: <WritingIcon size={20} />, iconColor: 'var(--mode-general, #e8572a)' },
+    { title: 'Help me debug this code', subtitle: 'Coding', icon: <CodingIcon size={20} />, iconColor: 'var(--mode-research, #4abde8)' },
+    { title: 'Deep think on a problem', subtitle: 'Deep Think', icon: <ThinkingIcon size={20} />, iconColor: 'var(--mode-deep, #7b8fff)' },
+    { title: 'Generate creative ideas', subtitle: 'Creative', icon: <CreativeIcon size={20} />, iconColor: 'var(--mode-therapy, #6ebf8b)' },
   ];
 
   return (
@@ -819,13 +881,16 @@ export default function ChatPage() {
               background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
               color: isDark ? '#a1a1aa' : '#71717a',
               fontFamily: 'var(--loaded-dm-mono), monospace',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
             }}>
               {activeTab === 'chat' ? (
-                selectedModelData?.category === 'coding' ? '💻 Code' :
-                selectedModelData?.category === 'reasoning' ? '🧠 Deep Think' :
-                selectedModelData?.category === 'creative' ? '✨ Creative' : '💬 General'
-              ) : activeTab === 'projects' ? '📁 Projects' :
-                  activeTab === 'imagine' ? '⭐ Imagine' : '📦 Artifacts'}
+                selectedModelData?.category === 'coding' ? <><CodingIcon size={12} /> Code</> :
+                selectedModelData?.category === 'reasoning' ? <><ThinkingIcon size={12} /> Deep Think</> :
+                selectedModelData?.category === 'creative' ? <><CreativeIcon size={12} /> Creative</> : <><ChatsIcon size={12} /> General</>
+              ) : activeTab === 'projects' ? <><ProjectsIcon size={12} /> Projects</> :
+                  activeTab === 'imagine' ? <><ImagineIcon size={12} /> Imagine</> : <><ArtifactsIcon size={12} /> Artifacts</>}
             </span>
             {activeTab === 'chat' && (
               <span style={{ fontSize: '0.85rem', opacity: 0.6, fontWeight: 500 }}>
@@ -845,15 +910,17 @@ export default function ChatPage() {
                 background: 'none',
                 border: 'none',
                 color: 'inherit',
-                fontSize: '1.15rem',
                 cursor: 'pointer',
                 opacity: 0.7,
                 transition: 'opacity 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
               onMouseEnter={e => e.currentTarget.style.opacity = '1'}
               onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}
             >
-              ⚙️
+              <SettingsIcon size={18} />
             </button>
           </div>
         </header>
@@ -926,7 +993,19 @@ export default function ChatPage() {
                         e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
                       }}
                     >
-                      <span style={{ fontSize: '1.4rem' }}>{prompt.icon}</span>
+                      <span style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '10px',
+                        background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                        color: prompt.iconColor || 'var(--text-1)',
+                        flexShrink: 0,
+                      }}>
+                        {prompt.icon}
+                      </span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 600, fontSize: '0.92rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {prompt.title}
@@ -972,7 +1051,7 @@ export default function ChatPage() {
                         gap: '0.35rem',
                         fontFamily: 'var(--loaded-dm-mono), monospace',
                       }}>
-                        <span>🤖</span> {msg.model}
+                        <SparklesIcon size={12} /> {msg.model}
                       </div>
                     )}
                   </div>
@@ -1035,7 +1114,7 @@ export default function ChatPage() {
                     background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
                     border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`
                   }}>
-                    <span>📎 {f.fileName}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><AttachmentIcon size={12} /> {f.fileName}</span>
                     <button onClick={() => removeFile(i)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', opacity: 0.6, padding: '0 2px' }}>×</button>
                   </div>
                 ))}
@@ -1312,10 +1391,10 @@ export default function ChatPage() {
             {/* Modes Section */}
             <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
               {[
-                { id: 'code', label: 'Code', icon: '</>' },
-                { id: 'deep', label: 'Deep-Think', icon: '◈' },
-                { id: 'study', label: 'Study', icon: '🎓' },
-                { id: 'therapy', label: 'Therapy', icon: '☕' },
+                { id: 'code', label: 'Code', icon: <CodingIcon size={14} /> },
+                { id: 'deep', label: 'Deep-Think', icon: <ThinkingIcon size={14} /> },
+                { id: 'study', label: 'Study', icon: <LearningIcon size={14} /> },
+                { id: 'therapy', label: 'Therapy', icon: <TherapyIcon size={14} /> },
               ].map(mode => {
                 const isActive = activeMode === mode.id;
                 return (
@@ -1348,7 +1427,7 @@ export default function ChatPage() {
                       transition: 'all 0.2s ease'
                     }}
                   >
-                    <span style={{ fontSize: '1rem', opacity: isActive ? 1 : 0.8 }}>{mode.icon}</span> {mode.label}
+                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isActive ? 1 : 0.8 }}>{mode.icon}</span> {mode.label}
                   </button>
                 );
               })}
