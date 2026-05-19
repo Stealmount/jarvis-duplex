@@ -8,6 +8,8 @@ import ImagineView from '@/components/ImagineView';
 import ProjectsView from '@/components/ProjectsView';
 import ArtifactsView from '@/components/ArtifactsView';
 import JarvisLogo from '@/components/JarvisLogo';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // ─── ELEGANT SLIM SVG ICONS ───
 const SearchIcon = ({ size = 18 }) => (
@@ -156,6 +158,13 @@ const SparklesIcon = ({ size = 12 }) => (
   </svg>
 );
 
+const SunglassesIcon = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}>
+    <path d="M4 9c0-1.1.9-2 2-2h3.5a1.5 1.5 0 0 1 1.5 1.5V9.5a1.5 1.5 0 0 1-1.5 1.5H6c-1.1 0-2-.9-2-2zM13 8.5c0-.83.67-1.5 1.5-1.5H18c1.1 0 2 .9 2 2v.5c0 1.1-.9 2-2 2h-3.5a1.5 1.5 0 0 1-1.5-1.5v-.5z" />
+    <path d="M9.5 9h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
 // ─── HIGH FIDELITY WAV ENCODER FOR DUPLEX VOICE ───
 function float32ToWav(float32Array, sampleRate = 16000) {
   const buffer = new ArrayBuffer(44 + float32Array.length * 2);
@@ -197,6 +206,13 @@ function writeString(view, offset, string) {
 }
 
 const MODELS = [
+  { id: 'openrouter/deepseek/deepseek-v4-flash', name: 'DeepSeek V4 Flash', provider: 'OpenRouter', category: 'general', description: 'DeepSeek\'s lightning-fast Mixture-of-Experts (MoE) reasoning model', free: true },
+  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', category: 'general', description: 'OpenAI\'s ultra-fast, highly efficient standard model', free: true },
+  { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'OpenAI', category: 'reasoning', description: 'OpenAI\'s flagship high-intelligence model', free: false },
+  { id: 'openai/o1-mini', name: 'OpenAI o1 Mini', provider: 'OpenAI', category: 'reasoning', description: 'OpenAI\'s fast reasoning-first model', free: false },
+  { id: 'openai/o1', name: 'OpenAI o1', provider: 'OpenAI', category: 'reasoning', description: 'OpenAI\'s premium full-reasoning model', free: false },
+  { id: 'anthropic/claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', category: 'reasoning', description: 'Anthropic\'s gold standard for reasoning and coding', free: false },
+  { id: 'anthropic/claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', provider: 'Anthropic', category: 'general', description: 'Anthropic\'s fastest, highly intelligent light-speed model', free: true },
   { id: 'google/gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite', provider: 'Google', category: 'general', description: 'Google\'s fastest native speed model', free: true },
   { id: 'google/gemini-3-flash-preview', name: 'Gemini 3 Flash', provider: 'Google', category: 'general', description: 'Google\'s newest premium flagship preview', free: true },
   { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google', category: 'reasoning', description: 'Google\'s premium reasoning & coding model', free: false },
@@ -204,7 +220,6 @@ const MODELS = [
   { id: 'groq/llama-3.3-70b-versatile', name: 'Llama 3.3 70B', provider: 'Groq', category: 'coding', description: 'Ultra-low latency open-weights powerhouse', free: true },
   { id: 'openrouter/deepseek/deepseek-chat', name: 'DeepSeek V3', provider: 'OpenRouter', category: 'general', description: 'DeepSeek flagship intelligence', free: true },
   { id: 'openrouter/deepseek/deepseek-r1', name: 'DeepSeek R1', provider: 'OpenRouter', category: 'reasoning', description: 'Full reasoning chain-of-thought model', free: false },
-  { id: 'openrouter/deepseek/deepseek-v4-flash', name: 'DeepSeek V4 Flash', provider: 'OpenRouter', category: 'general', description: 'DeepSeek\'s lightning-fast Mixture-of-Experts (MoE) reasoning model', free: true },
   { id: 'nvidia/nvidia/llama-3.1-nemotron-70b-instruct', name: 'Nemotron 70B', provider: 'NVIDIA', category: 'general', description: 'Nvidia\'s custom fine-tuned powerhouse', free: false },
   { id: 'minimax/minimax-m2.5', name: 'MiniMax M2.5', provider: 'MiniMax', category: 'creative', description: 'MiniMax creative writing & dialogue specialist', free: true },
 ];
@@ -226,7 +241,7 @@ export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('google/gemini-3.1-flash-lite');
+  const [selectedModel, setSelectedModel] = useState('openrouter/deepseek/deepseek-v4-flash');
   const [activeCategory, setActiveCategory] = useState('all');
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   
@@ -241,6 +256,31 @@ export default function ChatPage() {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceGender, setVoiceGender] = useState('female');
   const [activeTab, setActiveTab] = useState('chat');
+
+  const [greeting, setGreeting] = useState('Good morning');
+  const [greetingSubtitle, setGreetingSubtitle] = useState('How can I help you today?');
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    let timeGreeting;
+    if (hour >= 5 && hour < 12) timeGreeting = 'Good morning';
+    else if (hour >= 12 && hour < 17) timeGreeting = 'Good afternoon';
+    else if (hour >= 17 && hour < 21) timeGreeting = 'Good evening';
+    else timeGreeting = 'Good night';
+
+    let name = null;
+    if (userInfo?.name) {
+      const nameParts = userInfo.name.trim().split(/\s+/);
+      name = nameParts[0];
+    }
+    setGreeting(name ? `${timeGreeting}, ${name}.` : `${timeGreeting}.`);
+    
+    if (!userInfo || userInfo.role === 'guest') {
+      setGreetingSubtitle('Sign in to save your conversations and access premium limits.');
+    } else {
+      setGreetingSubtitle('How can I help you today?');
+    }
+  }, [userInfo]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -598,9 +638,9 @@ export default function ChatPage() {
 
   return (
     <div
+      className="bg-ambient"
       style={{
         minHeight: '100vh',
-        background: 'transparent',
         color: isDark ? '#e4e4e7' : '#18181b',
         display: 'flex',
         fontFamily: 'var(--font-sans), -apple-system, BlinkMacSystemFont, sans-serif',
@@ -609,8 +649,7 @@ export default function ChatPage() {
         zIndex: 1,
       }}
     >
-      <div style={{ position: 'absolute', inset: 0, zIndex: -1, opacity: 0.4, pointerEvents: 'none' }}>
-      </div>
+      <ParticleBackground />
       {/* ─── SIDEBAR ─── */}
       <aside
         style={{
@@ -781,63 +820,57 @@ export default function ChatPage() {
         }}>
           <button
             onClick={() => setSettingsOpen(true)}
+            title="Settings"
             style={{
               flex: 1,
-              padding: '0.6rem',
+              padding: '0.65rem',
               borderRadius: '10px',
               border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
               background: 'transparent',
               color: 'inherit',
               cursor: 'pointer',
-              fontSize: '0.82rem',
-              fontWeight: 500,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '0.35rem',
             }}
           >
-            <SettingsIcon /> Settings
+            <SettingsIcon size={18} />
           </button>
           <button
             onClick={() => setVoiceEnabled(!voiceEnabled)}
+            title="Toggle Voice"
             style={{
               flex: 1,
-              padding: '0.6rem',
+              padding: '0.65rem',
               borderRadius: '10px',
               border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
               background: voiceEnabled ? 'rgba(59,130,246,0.15)' : 'transparent',
               color: voiceEnabled ? '#60a5fa' : 'inherit',
               cursor: 'pointer',
-              fontSize: '0.82rem',
-              fontWeight: 500,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '0.35rem',
             }}
           >
-            <VoiceIcon /> Voice
+            <VoiceIcon size={18} />
           </button>
           <button
             onClick={handleThemeChange}
+            title={isDark ? "Light Mode" : "Dark Mode"}
             style={{
               flex: 1,
-              padding: '0.6rem',
+              padding: '0.65rem',
               borderRadius: '10px',
               border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
               background: 'transparent',
               color: 'inherit',
               cursor: 'pointer',
-              fontSize: '0.82rem',
-              fontWeight: 500,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '0.35rem',
             }}
           >
-            {isDark ? <><SunIcon /> Light</> : <><MoonIcon /> Dark</>}
+            {isDark ? <SunIcon size={18} /> : <MoonIcon size={18} />}
           </button>
         </div>
       </aside>
@@ -892,16 +925,11 @@ export default function ChatPage() {
               ) : activeTab === 'projects' ? <><ProjectsIcon size={12} /> Projects</> :
                   activeTab === 'imagine' ? <><ImagineIcon size={12} /> Imagine</> : <><ArtifactsIcon size={12} /> Artifacts</>}
             </span>
-            {activeTab === 'chat' && (
-              <span style={{ fontSize: '0.85rem', opacity: 0.6, fontWeight: 500 }}>
-                {selectedModelData?.name}
-              </span>
-            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
             {activeTab === 'chat' && (
               <span style={{ fontSize: '0.78rem', opacity: 0.5, fontFamily: 'var(--loaded-dm-mono), monospace' }}>
-                {messages.filter(m => m.role === 'user').length} / 50
+                {userInfo?.role === 'developer' ? `${messages.filter(m => m.role === 'user').length} / ∞` : `${messages.filter(m => m.role === 'user').length} / ${userInfo?.role === 'user' ? '100' : '50'}`}
               </span>
             )}
             <button
@@ -927,7 +955,7 @@ export default function ChatPage() {
 
         {/* Chat Area */}
         {activeTab === 'chat' && (
-          <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
             {messages.length === 0 ? (
               /* Empty Greeting State */
               <div style={{
@@ -935,25 +963,23 @@ export default function ChatPage() {
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                minHeight: '75vh',
+                minHeight: '55vh',
                 textAlign: 'center',
-                gap: '1.25rem',
+                gap: '1rem',
+                paddingTop: '3rem',
               }}>
-                <div style={{ marginBottom: '0.5rem' }}>
-                  <JarvisLogo size="greeting" />
-                </div>
                 <h2 style={{
-                  fontSize: 'clamp(1.25rem, 4vw, 1.8rem)',
+                  fontSize: 'clamp(1.75rem, 5vw, 2.4rem)',
                   fontWeight: 300,
                   margin: 0,
                   fontFamily: 'var(--font-serif), serif',
                   letterSpacing: '0.02em',
-                  color: isDark ? '#e4e4e7' : '#18181b',
+                  color: isDark ? '#ffffff' : '#111111',
                 }}>
-                  Good Evening, {userInfo?.name || 'Guest'}.
+                  {greeting}
                 </h2>
-                <p style={{ opacity: 0.5, margin: 0, fontSize: '0.92rem' }}>
-                  Sign in to save your conversations and access premium limits.
+                <p style={{ opacity: 0.5, margin: 0, fontSize: '0.96rem', maxWidth: '480px', lineHeight: 1.5 }}>
+                  {greetingSubtitle}
                 </p>
 
                 {/* Suggested Prompts Grid */}
@@ -962,8 +988,8 @@ export default function ChatPage() {
                   gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
                   gap: '0.85rem',
                   width: '100%',
-                  maxWidth: '740px',
-                  padding: '1.5rem 1rem 0 1rem',
+                  maxWidth: '920px',
+                  padding: '2rem 1rem 0 1rem',
                 }}>
                   {suggestedPrompts.map(prompt => (
                     <button
@@ -1021,51 +1047,72 @@ export default function ChatPage() {
               </div>
             ) : (
               /* Message Feed */
-              <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ maxWidth: '920px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
                 {messages.map(msg => (
                   <div
                     key={msg.id}
+                    className="animate-message-in"
                     style={{
                       alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                      maxWidth: '85%',
-                      padding: '1rem 1.25rem',
-                      borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                      maxWidth: msg.role === 'user' ? '75%' : '88%',
+                      padding: '1.15rem 1.4rem',
+                      borderRadius: msg.role === 'user' ? '20px 20px 4px 20px' : '4px 20px 20px 20px',
                       background: msg.role === 'user'
-                        ? 'linear-gradient(135deg, #2563eb, #7c3aed)'
-                        : isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.035)',
-                      color: msg.role === 'user' ? '#fff' : 'inherit',
+                        ? (isDark ? 'linear-gradient(135deg, rgba(37,99,235,0.85), rgba(124,58,237,0.85))' : 'linear-gradient(135deg, #2563eb, #7c3aed)')
+                        : (isDark ? 'rgba(255, 255, 255, 0.015)' : 'rgba(255, 255, 255, 0.85)'),
+                      backdropFilter: msg.role === 'assistant' ? 'blur(16px)' : 'none',
+                      color: msg.role === 'user' ? '#ffffff' : 'inherit',
                       fontSize: '0.96rem',
                       lineHeight: 1.6,
                       wordBreak: 'break-word',
-                      border: msg.role === 'user' ? 'none' : `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
+                      boxShadow: msg.role === 'user'
+                        ? '0 4px 14px rgba(37,99,235,0.18)'
+                        : (isDark ? '0 10px 30px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.03)' : '0 10px 30px rgba(0,0,0,0.03)'),
+                      border: msg.role === 'user' ? 'none' : `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+                      position: 'relative',
                     }}
                   >
-                    <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
-                    {msg.model && (
+                    {msg.role === 'assistant' && (
                       <div style={{
-                        fontSize: '0.72rem',
-                        opacity: msg.role === 'user' ? 0.8 : 0.4,
-                        marginTop: '0.6rem',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.35rem',
-                        fontFamily: 'var(--loaded-dm-mono), monospace',
+                        gap: '0.5rem',
+                        marginBottom: '0.5rem',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        color: isDark ? 'var(--mode-research, #4abde8)' : '#2563eb',
+                        fontFamily: 'var(--font-mono), monospace',
                       }}>
-                        <SparklesIcon size={12} /> {msg.model}
+                        JARVIS
                       </div>
                     )}
+                    
+                    {msg.role === 'assistant' ? (
+                      <div className="msg-body">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {msg.content}
+                        </ReactMarkdown>
+                      </div>
+                    ) : (
+                      <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+                    )}
+
                   </div>
                 ))}
                 {isLoading && (
                   <div style={{
                     alignSelf: 'flex-start',
-                    padding: '1rem 1.35rem',
-                    borderRadius: '18px 18px 18px 4px',
-                    background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.035)',
+                    padding: '1.15rem 1.4rem',
+                    borderRadius: '4px 20px 20px 20px',
+                    background: isDark ? 'rgba(255, 255, 255, 0.015)' : 'rgba(255, 255, 255, 0.85)',
+                    backdropFilter: 'blur(16px)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.4rem',
-                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)'}`,
+                    boxShadow: isDark ? '0 10px 30px rgba(0,0,0,0.15)' : '0 10px 30px rgba(0,0,0,0.03)',
                   }}>
                     <div className="dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', animation: 'dot-pulse 1.2s infinite ease-in-out', animationDelay: '0s' }} />
                     <div className="dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor', animation: 'dot-pulse 1.2s infinite ease-in-out', animationDelay: '0.2s' }} />
@@ -1092,13 +1139,12 @@ export default function ChatPage() {
 
         {/* Input Bar Wrapper */}
         <div style={{
-          padding: '1.25rem 1.5rem',
-          borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-          background: isDark ? 'rgba(6,6,8,0.5)' : 'rgba(250,250,250,0.5)',
-          backdropFilter: 'blur(20px)',
+          padding: '0.75rem 1.5rem 1.75rem 1.5rem',
+          background: 'transparent',
+          borderTop: 'none',
         }}>
           <div style={{
-            maxWidth: '800px',
+            maxWidth: '920px',
             margin: '0 auto',
             display: 'flex',
             flexDirection: 'column',
@@ -1127,14 +1173,16 @@ export default function ChatPage() {
               padding: '0.75rem 1rem',
               borderRadius: '20px',
               border: incognitoEnabled 
-                ? `1px solid rgba(139, 92, 246, 0.45)` 
-                : `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+                ? `1px solid rgba(239, 68, 68, 0.45)` 
+                : `1px solid ${isDark ? 'rgba(255, 255, 255, 0.07)' : 'rgba(0, 0, 0, 0.06)'}`,
               boxShadow: incognitoEnabled 
-                ? `0 0 16px rgba(139, 92, 246, 0.25)` 
-                : 'none',
+                ? (isDark ? '0 8px 32px rgba(0, 0, 0, 0.25), 0 0 16px rgba(239, 68, 68, 0.2)' : '0 8px 32px rgba(0, 0, 0, 0.06), 0 0 16px rgba(239, 68, 68, 0.1)')
+                : (isDark ? '0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255,255,255,0.02)' : '0 8px 32px rgba(0, 0, 0, 0.04)'),
               background: incognitoEnabled 
-                ? (isDark ? 'rgba(139, 92, 246, 0.05)' : 'rgba(139, 92, 246, 0.02)') 
-                : (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'),
+                ? (isDark ? 'rgba(239, 68, 68, 0.06)' : 'rgba(239, 68, 68, 0.03)') 
+                : (isDark ? 'rgba(10, 10, 15, 0.6)' : 'rgba(255, 255, 255, 0.65)'),
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
               color: isDark ? '#e0e0e0' : '#1a1a1a',
               gap: '6px',
               transition: 'all 0.3s cubic-bezier(0.16,1,0.3,1)',
@@ -1145,15 +1193,16 @@ export default function ChatPage() {
                 <div style={{
                   fontSize: '0.72rem',
                   fontFamily: 'var(--font-mono), monospace',
-                  color: isDark ? '#c084fc' : '#8b5cf6',
+                  color: isDark ? '#f87171' : '#ef4444',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '4px',
+                  gap: '6px',
                   opacity: 0.85,
                   paddingBottom: '2px',
                   userSelect: 'none'
                 }}>
-                  <span>🔒 Private Session</span>
+                  <SunglassesIcon size={14} />
+                  <span style={{ fontWeight: 600 }}>Incognito</span>
                   <span style={{ opacity: 0.6 }}>· Conversations are not saved</span>
                 </div>
               )}
@@ -1225,7 +1274,7 @@ export default function ChatPage() {
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: incognitoEnabled ? '#a78bfa' : 'inherit',
+                      color: incognitoEnabled ? '#ef4444' : 'inherit',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
@@ -1259,12 +1308,13 @@ export default function ChatPage() {
                     onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}
                     onMouseLeave={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}
                   >
-                    <span>🤖 {selectedModelData?.name || 'Select Model'}</span>
+                    <span>{selectedModelData?.name || 'Select Model'}</span>
                     <span style={{ fontSize: '0.6rem', opacity: 0.6 }}>▼</span>
                   </button>
 
                   {modelMenuOpen && (
                     <div
+                      className="animate-popover"
                       onClick={(e) => e.stopPropagation()}
                       style={{
                         position: 'absolute',
@@ -1319,23 +1369,6 @@ export default function ChatPage() {
                           >
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                               <span style={{ fontWeight: 600, fontSize: '0.82rem' }}>{m.name}</span>
-                              <span style={{
-                                fontSize: '0.58rem',
-                                fontWeight: 700,
-                                textTransform: 'uppercase',
-                                padding: '2px 5px',
-                                borderRadius: '4px',
-                                background: m.provider === 'Google' ? 'rgba(66,133,244,0.12)' :
-                                            m.provider === 'Groq' ? 'rgba(242,100,42,0.12)' :
-                                            m.provider === 'OpenRouter' ? 'rgba(124,58,237,0.12)' :
-                                            m.provider === 'NVIDIA' ? 'rgba(118,185,0,0.12)' : 'rgba(255,255,255,0.1)',
-                                color: m.provider === 'Google' ? '#4285F4' :
-                                       m.provider === 'Groq' ? '#F2642A' :
-                                       m.provider === 'OpenRouter' ? '#7C3AED' :
-                                       m.provider === 'NVIDIA' ? '#76B900' : 'inherit',
-                              }}>
-                                {m.provider}
-                              </span>
                             </div>
                             <div style={{ fontSize: '0.62rem', fontFamily: 'var(--font-mono), monospace', opacity: 0.4, wordBreak: 'break-all', marginTop: '1px' }}>
                               ID: {m.id}
@@ -1389,7 +1422,7 @@ export default function ChatPage() {
             </div>
 
             {/* Modes Section */}
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
               {[
                 { id: 'code', label: 'Code', icon: <CodingIcon size={14} /> },
                 { id: 'deep', label: 'Deep-Think', icon: <ThinkingIcon size={14} /> },
@@ -1400,6 +1433,7 @@ export default function ChatPage() {
                 return (
                   <button
                     key={mode.id}
+                    className={`mode-btn-interactive ${isActive ? `active-${mode.id}` : ''}`}
                     onClick={() => {
                       setActiveMode(mode.id);
                       if (mode.id === 'code') {
@@ -1412,22 +1446,9 @@ export default function ChatPage() {
                         setSelectedModel('google/gemini-3.1-flash-lite');
                       }
                     }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '6px 14px',
-                      borderRadius: '20px',
-                      border: `1px solid ${isDark ? (isActive ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)') : (isActive ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.1)')}`,
-                      background: isActive ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)') : 'transparent',
-                      color: isDark ? '#e0e0e0' : '#1a1a1a',
-                      fontSize: '0.85rem',
-                      cursor: 'pointer',
-                      fontWeight: isActive ? 600 : 500,
-                      transition: 'all 0.2s ease'
-                    }}
                   >
-                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isActive ? 1 : 0.8 }}>{mode.icon}</span> {mode.label}
+                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isActive ? 1 : 0.75 }}>{mode.icon}</span>
+                    <span>{mode.label}</span>
                   </button>
                 );
               })}
@@ -1453,6 +1474,7 @@ export default function ChatPage() {
           onClick={() => setSettingsOpen(false)}
         >
           <div
+            className="animate-modal"
             style={{
               width: '100%',
               maxWidth: '500px',
@@ -1757,13 +1779,13 @@ export default function ChatPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: '0.86rem', opacity: 0.6 }}>Tier Status</span>
                   <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase' }}>
-                    {userInfo?.role || 'GUEST TIER'}
+                    {userInfo?.role === 'developer' ? 'DEVELOPER CONSOLE' : (userInfo?.role || 'GUEST TIER')}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: '0.86rem', opacity: 0.6 }}>Usage Limit</span>
                   <span style={{ fontSize: '0.86rem', fontFamily: 'var(--loaded-dm-mono), monospace' }}>
-                    {messages.filter(m => m.role === 'user').length} / 50 messages used
+                    {userInfo?.role === 'developer' ? '0 / Unlimited' : `${messages.filter(m => m.role === 'user').length} / ${userInfo?.role === 'user' ? '100' : '50'} messages used`}
                   </span>
                 </div>
                 <button

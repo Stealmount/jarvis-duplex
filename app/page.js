@@ -2,7 +2,7 @@
 
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import JarvisLogo from '@/components/JarvisLogo';
 import { getOrCreateGuestId } from '@/lib/guest';
 
@@ -18,6 +18,9 @@ const GoogleIcon = () => (
 export default function LandingPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [showGuestModal, setShowGuestModal] = useState(false);
+  const [guestName, setGuestName] = useState('');
+  const [guestError, setGuestError] = useState('');
 
   useEffect(() => {
     // Apply saved theme
@@ -35,10 +38,15 @@ export default function LandingPage() {
     }
   }, [status, router]);
 
-  const continueAsGuest = () => {
+  const handleGuestSubmit = (e) => {
+    e.preventDefault();
+    if (!guestName.trim()) {
+      setGuestError('Please enter your name.');
+      return;
+    }
     const guestId = getOrCreateGuestId();
     localStorage.setItem('jarvis_user', JSON.stringify({
-      name: 'Guest',
+      name: guestName.trim(),
       email: `${guestId}@jarvis.local`,
       role: 'guest',
     }));
@@ -63,7 +71,7 @@ export default function LandingPage() {
         {/* Google Sign In */}
         <button className="auth-btn auth-btn--primary" onClick={() => signIn('google', { callbackUrl: '/chat' })}>
           <GoogleIcon />
-          <span>Sign in with Google</span>
+          <span>Sign up with Google</span>
         </button>
 
         {/* Create Account */}
@@ -78,7 +86,7 @@ export default function LandingPage() {
         </div>
 
         {/* Guest */}
-        <button className="auth-btn auth-btn--ghost" onClick={continueAsGuest}>
+        <button className="auth-btn auth-btn--ghost" onClick={() => setShowGuestModal(true)}>
           <span>⚡</span>
           <span>Continue as guest</span>
         </button>
@@ -108,6 +116,57 @@ export default function LandingPage() {
           <span className="limit-detail">100 messages · 20 images · resets daily</span>
         </div>
       </div>
+
+      {/* Guest Name Modal */}
+      {showGuestModal && (
+        <div className="settings-overlay animate-popover" style={{ backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', background: 'rgba(0,0,0,0.5)', zIndex: 99999 }}>
+          <div className="settings-panel animate-modal" style={{ maxWidth: '380px', padding: '24px', borderRadius: '20px', background: 'rgba(10, 10, 15, 0.9)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.08)', margin: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', fontWeight: 500, color: '#fff' }}>Enter Your Name</h3>
+                <button 
+                  onClick={() => { setShowGuestModal(false); setGuestError(''); }} 
+                  style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '1.4rem' }}
+                >
+                  ×
+                </button>
+              </div>
+              <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.4 }}>
+                Please enter your name to start your session with JARVIS.
+              </p>
+              <form onSubmit={handleGuestSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <input
+                  type="text"
+                  placeholder="Your Name"
+                  value={guestName}
+                  onChange={(e) => { setGuestName(e.target.value); setGuestError(''); }}
+                  autoFocus
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    borderRadius: '12px',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    color: '#fff',
+                    fontSize: '15px',
+                    outline: 'none',
+                  }}
+                />
+                {guestError && (
+                  <p style={{ color: '#ff5555', fontSize: '0.75rem', fontFamily: 'var(--font-mono)' }}>{guestError}</p>
+                )}
+                <button
+                  type="submit"
+                  className="auth-btn auth-btn--primary"
+                  style={{ width: '100%', padding: '12px', background: '#fff', color: '#000', border: 'none', fontWeight: 500 }}
+                >
+                  Let's Go ⚡
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

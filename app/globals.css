@@ -583,4 +583,154 @@ input, textarea, select { font-size: 16px !important; }
 
 .settings-body { padding: 16px 24px 32px; display: flex; flex-direction: column; gap: 24px; }
 
+/* ─── PREMIUM CUSTOM DESIGN OVERRIDES ─── */
+
+/* Immersive Background Container */
+.bg-ambient {
+  background: var(--bg);
+  position: relative;
+}
+
+/* Premium Interactive Mode Buttons */
+.mode-btn-interactive {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.mode-btn-interactive:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-mid);
+  color: var(--text-1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.mode-btn-interactive:active {
+  transform: translateY(0);
+}
+
+/* Interactive glow states for specific modes */
+.mode-btn-interactive.active-code {
+  color: var(--mode-research, #4abde8);
+  border-color: rgba(74, 189, 232, 0.45);
+  background: rgba(74, 189, 232, 0.08);
+  box-shadow: 0 4px 14px rgba(74, 189, 232, 0.16);
+  font-weight: 600;
+}
+[data-theme="light"] .mode-btn-interactive.active-code {
+  background: rgba(74, 189, 232, 0.12);
+  border-color: rgba(74, 189, 232, 0.6);
+}
+
+.mode-btn-interactive.active-deep {
+  color: var(--mode-deep, #7b8fff);
+  border-color: rgba(123, 143, 255, 0.45);
+  background: rgba(123, 143, 255, 0.08);
+  box-shadow: 0 4px 14px rgba(123, 143, 255, 0.16);
+  font-weight: 600;
+}
+[data-theme="light"] .mode-btn-interactive.active-deep {
+  background: rgba(123, 143, 255, 0.12);
+  border-color: rgba(123, 143, 255, 0.6);
+}
+
+.mode-btn-interactive.active-study {
+  color: var(--mode-study, #f5c842);
+  border-color: rgba(245, 200, 66, 0.45);
+  background: rgba(245, 200, 66, 0.08);
+  box-shadow: 0 4px 14px rgba(245, 200, 66, 0.16);
+  font-weight: 600;
+}
+[data-theme="light"] .mode-btn-interactive.active-study {
+  background: rgba(245, 200, 66, 0.12);
+  border-color: rgba(245, 200, 66, 0.6);
+}
+
+.mode-btn-interactive.active-therapy {
+  color: var(--mode-therapy, #6ebf8b);
+  border-color: rgba(110, 191, 139, 0.45);
+  background: rgba(110, 191, 139, 0.08);
+  box-shadow: 0 4px 14px rgba(110, 191, 139, 0.16);
+  font-weight: 600;
+}
+[data-theme="light"] .mode-btn-interactive.active-therapy {
+  background: rgba(110, 191, 139, 0.12);
+  border-color: rgba(110, 191, 139, 0.6);
+}
+
+/* Transitions & Micro-animations */
+.animate-popover {
+  animation: popover-in 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: bottom right;
+}
+
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-modal {
+  animation: modal-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-message-in {
+  animation: message-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes message-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Premium shadows & smooth transitions for standard elements */
+button, select, input, textarea {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Markdown styling polish */
+.msg-body pre {
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  border-color: rgba(255,255,255,0.06);
+}
+[data-theme="light"] .msg-body pre {
+  box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+  border-color: rgba(0,0,0,0.05);
+}
+
+
 

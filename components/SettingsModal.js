@@ -113,13 +113,13 @@ export default function SettingsModal({ isOpen, onClose, voiceGender, onVoiceGen
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-3)' }}>Tier Status</span>
                 <span style={{ color: 'var(--text-1)', fontWeight: 500, textTransform: 'uppercase' }}>
-                  {userInfo?.role === 'guest' ? 'Guest Tier' : 'Pro Member'}
+                  {userInfo?.role === 'developer' ? 'Developer Console' : userInfo?.role === 'guest' ? 'Guest Tier' : 'Pro Member'}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', paddingTop: '4px', borderTop: '1px dashed var(--border)' }}>
                 <span style={{ color: 'var(--text-3)' }}>Usage Limit</span>
                 <span style={{ color: 'var(--text-2)' }}>
-                  {usage.count} / {usage.limit} messages used
+                  {userInfo?.role === 'developer' ? '0 / Unlimited' : `${usage.count} / ${usage.limit} messages used`}
                 </span>
               </div>
             </div>

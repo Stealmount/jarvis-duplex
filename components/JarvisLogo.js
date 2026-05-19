@@ -140,7 +140,6 @@ export default function JarvisLogo({ size = 'sidebar', animated = true }) {
   if (size === 'sidebar') {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', userSelect: 'none' }}>
-        {renderEmblem(24)}
         <span
           style={{
             fontFamily: "'Cinzel', serif",
@@ -158,37 +157,35 @@ export default function JarvisLogo({ size = 'sidebar', animated = true }) {
         >
           Jarvis
         </span>
+        <span style={{
+          fontSize: '0.55rem',
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          padding: '1px 4px',
+          borderRadius: '4px',
+          background: 'rgba(59, 130, 246, 0.12)',
+          color: '#3b82f6',
+          border: '1px solid rgba(59, 130, 246, 0.25)',
+          fontFamily: "var(--font-mono), monospace",
+          lineHeight: 1,
+          alignSelf: 'center',
+          marginTop: '1px',
+        }}>
+          BETA
+        </span>
       </div>
     );
   }
 
   if (isGreeting) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.6rem', userSelect: 'none' }}>
-        {/* Floating frosted glass portal for the emblem */}
-        <div style={{
-          padding: '2.5rem',
-          borderRadius: '32px',
-          background: isDark ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.01)',
-          border: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
-          boxShadow: isDark 
-            ? '0 24px 64px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.03)' 
-            : '0 24px 64px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.4)',
-          backdropFilter: 'blur(20px)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          animation: animated ? 'jarvisFloat 7s ease-in-out infinite' : 'none',
-        }}>
-          {renderEmblem(92)}
-        </div>
-
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', userSelect: 'none' }}>
         {/* Elegant typography bundle */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
           <span
             style={{
               fontFamily: "'Cinzel', serif",
-              fontSize: '3rem',
+              fontSize: '3.6rem',
               fontWeight: 400,
               letterSpacing: '0.45em',
               background: 'linear-gradient(135deg, var(--text-1) 10%, var(--text-2) 100%)',
@@ -204,7 +201,7 @@ export default function JarvisLogo({ size = 'sidebar', animated = true }) {
           </span>
           <span style={{
             fontFamily: "'Outfit', sans-serif",
-            fontSize: '0.65rem',
+            fontSize: '0.7rem',
             fontWeight: 400,
             textTransform: 'uppercase',
             letterSpacing: '0.35em',
@@ -216,13 +213,6 @@ export default function JarvisLogo({ size = 'sidebar', animated = true }) {
             Cognitive Companion
           </span>
         </div>
-        
-        <style dangerouslySetInnerHTML={{ __html: `
-          @keyframes jarvisFloat {
-            0%, 100% { transform: translateY(0px) scale(1); }
-            50% { transform: translateY(-6px) scale(1.02); }
-          }
-        `}} />
       </div>
     );
   }

@@ -87,6 +87,7 @@ async function callOpenAICompatible(url, modelId, messages, key) {
 }
 
 // MiniMax direct call (since it has a GroupId query parameter)
+// MiniMax direct call (since it has a GroupId query parameter)
 async function callMiniMax(modelId, messages, key, groupId) {
   const payloadMessages = [
     { role: 'system', content: SYSTEM_PROMPT },
@@ -116,6 +117,37 @@ async function callMiniMax(modelId, messages, key, groupId) {
   const data = await res.json();
   const text = data.choices?.[0]?.message?.content;
   if (!text) throw new Error('Empty response from MiniMax');
+  return text;
+}
+
+// Anthropic direct call
+async function callAnthropic(modelId, messages, key) {
+  const payloadMessages = messages.map(m => ({ role: m.role, content: m.content }));
+  
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages: payloadMessages,
+      max_tokens: 2048,
+      system: SYSTEM_PROMPT,
+      temperature: 0.7
+    })
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Anthropic error ${res.status}: ${errorText}`);
+  }
+
+  const data = await res.json();
+  const text = data.content?.[0]?.text;
+  if (!text) throw new Error(`Empty response from Anthropic ${modelId}`);
   return text;
 }
 
@@ -153,8 +185,19 @@ export async function POST(req) {
       } else if (model.includes('minimax')) {
         targetProvider = 'minimax';
         targetModel = model.replace('minimax/', '');
+      } else if (model.includes('openai/')) {
+        targetProvider = 'openai';
+        targetModel = model.replace('openai/', '');
+      } else if (model.includes('anthropic/')) {
+        targetProvider = 'anthropic';
+        targetModel = model.replace('anthropic/', '');
       }
     }
+
+    const ANTHROPIC_KEYS = [
+      process.env.ANTHROPIC_API_KEYS ? process.env.ANTHROPIC_API_KEYS.split(',') : null,
+      process.env.ANTHROPIC_API_KEY
+    ].flat().filter(Boolean);
 
     // Define providers list in priority order of preference
     const providers = [
@@ -163,6 +206,29 @@ export async function POST(req) {
         key: process.env.GOOGLE_API_KEY,
         model: targetProvider === 'google' ? targetModel : 'gemini-3.1-flash-lite',
         action: async (m, msg, k) => callGoogle(m, msg, k)
+      },
+      {
+        name: 'openai',
+        key: process.env.OPENAI_API_KEY,
+        model: targetProvider === 'openai' ? targetModel : 'gpt-4o-mini',
+        action: async (m, msg, k) => callOpenAICompatible('https://api.openai.com/v1/chat/completions', m, msg, k)
+      },
+      {
+        name: 'anthropic',
+        key: ANTHROPIC_KEYS[0] || process.env.ANTHROPIC_API_KEY,
+        model: targetProvider === 'anthropic' ? targetModel : 'claude-3-5-sonnet-20241022',
+        action: async (m, msg, k) => {
+          let lastErr = null;
+          for (const key of ANTHROPIC_KEYS) {
+            try {
+              return await callAnthropic(m, msg, key);
+            } catch (e) {
+              console.error(`Anthropic key try failed:`, e.message);
+              lastErr = e;
+            }
+          }
+          throw lastErr || new Error("No working Anthropic keys configured");
+        }
       },
       {
         name: 'nvidia',

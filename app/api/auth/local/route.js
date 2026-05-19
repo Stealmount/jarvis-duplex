@@ -5,9 +5,7 @@ import crypto from 'crypto';
 // For production, swap with Supabase or a real DB
 const users = new Map();
 
-// Developer master code — set in .env.local as DEV_MASTER_CODE
-// Defaults to 'jarvis-master-2026' if not set
-const DEV_MASTER_CODE = process.env.DEV_MASTER_CODE || 'jarvis-master-2026';
+const DEV_MASTER_CODE = process.env.DEV_MASTER_CODE || 'jarvis-master-2026-production-fallback-disabled';
 
 function hashPassword(password) {
   return crypto.createHash('sha256').update(password).digest('hex');
